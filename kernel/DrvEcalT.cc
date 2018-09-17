@@ -26,7 +26,7 @@
 
 using namespace std;
 
-#define SOCKETS_IP_ADDRESS			"169.254.9.72"
+#define SOCKETS_IP_ADDRESS			"169.168.62.120"
 #define SOCKETS_PORT				5025
 #define SOCKETS_BUFFER_SIZE			1024
 #define SOCKETS_TIMEOUT				10
@@ -97,7 +97,7 @@ DrvEcalT::ComInit()
     // exit(1);
   }
 
-  printf(" Connected to server %s \n",SOCKETS_IP_ADDRESS);
+  printf(" ComInit - Connected to server %s \n",address);
 
   // and closae the sockets
   close(MySocket);
@@ -205,10 +205,10 @@ DrvEcalT::OnCycleLocal()
     exit(1);
   }
 
-  printf(" Connected to server %s \n",SOCKETS_IP_ADDRESS);
+  printf(" OnCycleLocal - Connected to server %s \n",address);
 
   // Minimize latency by setting TCP_NODELAY option
-  //SetNODELAY(MySocket);
+  SetNODELAY(MySocket);
 	
   // Clear status and reset instrument
   WriteString(MySocket,"*CLS;*RST\n");
@@ -216,39 +216,38 @@ DrvEcalT::OnCycleLocal()
   // Get instrument's ID string
   WriteString(MySocket,"*IDN?\n");
   ReadString(MySocket,SocketsBuffer);
-  printf("Instrument ID: %s\n",SocketsBuffer);
+  //printf("Instrument ID: %s\n",SocketsBuffer);
 	
   // Ask for control port
   WriteString(MySocket,"SYST:COMM:TCPIP:CONTROL?\n");
-  if(ReadString(MySocket,SocketsBuffer)==0)
-    {
+  if(ReadString(MySocket,SocketsBuffer)==0) {
       printf("Warning: No response from instrument (control port).\n");
       DrvEcalT_except::EcalTRetStatus(MySocket,2,"IP = "+fIPAddress+" ");
       close(MySocket);
-      exit(1);
-    }
-  printf(" Sockets buffer = %s \n",SocketsBuffer);
+      // exit(1);
+  }
+
+  //printf(" Sockets buffer = %s \n",SocketsBuffer);
   sscanf(SocketsBuffer,"%u",&ControlPort);
   printf("Control Port: %u\n",ControlPort);
 	
+  // printf(" create socket for control port \n");
   // Create socket for control port
-  if((MyControlPort=socket(PF_INET,SOCK_STREAM,0))==-1)
-    {
+  if((MyControlPort=socket(PF_INET,SOCK_STREAM,0))==-1) {
       printf("Error: Unable to create control port socket (%i)...\n",errno);
        DrvEcalT_except::EcalTRetStatus(MySocket,3,"IP= "+fIPAddress+" ");
        //perror("sockets"); // Print error message based on errno
        close(MySocket);
-       exit(1);
-    }
+       // exit(1);
+  }
+
+  //printf(" establishing connection to control port \n");
 
   // Establish TCP connection to control port
-  memset(&MyControlAddress,0,
-	 sizeof(struct sockaddr_in)); // Set structure to zero
+  memset(&MyControlAddress,0,sizeof(struct sockaddr_in)); // Set structure to zero
   MyControlAddress.sin_family=PF_INET; // IPv4
-  MyControlAddress.sin_port=
-    htons(ControlPort); // Port number (in network order)
-  MyControlAddress.sin_addr.s_addr=
-    inet_addr(SOCKETS_IP_ADDRESS); // IP address (in network order)
+  MyControlAddress.sin_port=htons(ControlPort); // Port number (in network order)
+  MyControlAddress.sin_addr.s_addr=inet_addr(address); // IP address (in network order)
   if(connect(MyControlPort,(struct sockaddr *)&MyControlAddress,
 	     sizeof(struct sockaddr_in))==-1) {
     printf("Error: Unable to establish connection to control port (%i)...\n",
@@ -256,24 +255,29 @@ DrvEcalT::OnCycleLocal()
     DrvEcalT_except::EcalTRetStatus(MySocket,3,"IP= "+fIPAddress+" ");
     // perror("sockets"); // Print error message based on errno
     close(MySocket);
-    exit(1);
+    // exit(1);
   }
-	
+
+  //printf(" doing a device clear \n");
+
   // Do a device clear
   DeviceClear(MyControlPort,SocketsBuffer);
        
 
   int iret;
 
+  // printf(" set channel 1 as monitor channels for scan \n");
   // set channel 1 as monitor channel
   iret=WriteString(MySocket,":FUNC \"TEMP\",(@101);:TEMP:TRAN:TYPE RTD,(@101);:RTD:TYPE 85,(@101);OCOM Off,(@101)\n");
   iret=WriteString(MySocket,":TEMP:TRAN:RTD:RES 1000,(@101)\n");
 
-  // set channel 1 as monitor channel
+  // printf(" set channel 4 as monitor channels for scan \n");
+  // set channel 4 as monitor channel
   iret=WriteString(MySocket,":FUNC \"TEMP\",(@104);:TEMP:TRAN:TYPE RTD,(@104);:RTD:TYPE 85,(@104);OCOM Off,(@104)\n");
   iret=WriteString(MySocket,":TEMP:TRAN:RTD:RES 1000,(@104)\n");
 	
 
+  // printf(" doing a scan \n");
   // now do a scan
   iret=WriteString(MySocket,":ROUT:SCAN (@101,104)\n");
 
@@ -307,7 +311,7 @@ DrvEcalT::OnCycleLocal()
       DrvEcalT_except::EcalTRetStatus(MySocket,2,"IP= "+fIPAddress+" ");
       // exit(1);
   } else {
-    printf(" socket buffer length =%d \n",iret);
+    // printf(" Read socket buffer length =%d \n",iret);
     // printf(" SCAN DATA read = %s \n",SocketsBuffer);
   }
 
@@ -322,11 +326,11 @@ DrvEcalT::OnCycleLocal()
   // and decode string
   while((tok=strsep(&socket1,",")) != NULL) {
     token[ntoken]=tok;
-    printf(" %d - %s \n",ntoken,tok);
+    //printf(" %d - %s \n",ntoken,tok);
     ntoken++;
   }
   
-  printf(" tokens found = %d \n",ntoken);
+  //printf(" tokens found = %d \n",ntoken);
   int nreads=ntoken/9;
   int ik;
   char *temp1;
@@ -342,7 +346,7 @@ DrvEcalT::OnCycleLocal()
   char mystamp[25];
   for (ik=0;ik<nreads;ik++) {
     int istart=ik*9;
-    printf(" ik=%d istart=%d \n",ik,istart);
+    //printf(" ik=%d istart=%d \n",ik,istart);
     temp1="";
     temp1=token[istart];
     //int length=strlen(temp);
@@ -369,10 +373,12 @@ DrvEcalT::OnCycleLocal()
     temp3="";
     temp3=token[istart+8];
     errflag=atoi(temp3);
+    // printf("\n");
     printf(" read %d - channel %d - T = %f - err = %d \n",ik,numchan[ik],tempf[ik],errflag);
     // printf(" time = %d-%d-%d %d:%d:%f \n",mydates[0],mydates[1],mydates[2],mytimes[0],mytimes[1],mytimes1);
     sprintf(mystamp,"%d-%d-%d %d:%d:%f",mydates[0],mydates[1],mydates[2],mytimes[0],mytimes[1],mytimes1);
     printf(" timestamp = %s \n",mystamp);
+    // printf("\n");
   }
   
   
