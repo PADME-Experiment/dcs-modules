@@ -1,0 +1,311 @@
+#include "kernel/DeviceManager.h"   //in c file
+#include "DrvCaenHV.h"
+#include "DrvCaenA7030.h"
+#include "DrvCaenSY4527.h"
+#include "DrvPadmeAmb.h"
+#include "DrvDiamondHV.h"
+#include "DrvHVSipm.h"
+#include "DrvBTFAmb.h"
+#include "DrvBTFBeam.h"
+#include "DrvCaen8100.h"
+#include "DrvCaen8301.h"
+#include "DrvEcalT.h"
+#include "fwk/utlMessageBus.h"
+#include <yaml-cpp/yaml.h>
+#include <memory>
+#include <csignal>
+
+
+
+class HVDumper: public VDeviceDriver{
+  // FIXME this is to be removed
+  // FIXME EXAMPLE
+  public:
+    //void Daemonize(){VDaemonSingleThread::Daemonize();}
+    void Service(){}
+    HVDumper():VDeviceDriver("HVDumper",nullptr){}
+    void UpdateAllLocalParams(){}
+    void OnStartLocal() {}
+    void OnCycleLocal() {
+      std::this_thread::sleep_for(std::chrono::seconds(5));
+      // DeviceManager::GetInstance().Get("CAENHV1")->DebugDump();
+      // DeviceManager::GetInstance().Get("CAENHV1")->Get("board1")->DebugDump();
+    }
+    void OnStopLocal(){}
+    void Finalize(){INFO("");JoinThread();SUCCESS("");}
+    void AssertInit(){}
+     private:
+     void SetLocalParams(std::set<std::string>){}
+     void UpdateAllLocal(const std::string&str){}
+};
+
+
+
+
+
+
+  DeviceManager&
+DeviceManager::GetInstance()
+{
+  static DeviceManager a;
+  return a;
+}
+
+  std::shared_ptr<VDaemonBase>
+DeviceManager::AddDaemon(const std::string& lab, std::shared_ptr<VDaemonBase>ptr)
+{
+  // TODO: should also set the global name of the device PADME/xxx/yyy/zzz
+  // TODO: should check if the device existed before
+
+  fDems[lab]=ptr;
+  return ptr;
+}
+
+  void
+DeviceManager::AssertInit()
+{
+  // note that DEVICES are FIRST
+  this->VDeviceBase::AssertInit();
+  for(auto it=fDems. begin();it!=fDems. end();++it){
+    INFO(it->second.get()->GetName());
+    //WARNING("Devices are not assertinit");
+    it->second.get()->AssertInit();
+  }
+}
+  void
+DeviceManager::Daemonize ()
+{
+  // note that DEVICES are FIRST
+  for(auto it=fDevs. begin();it!=fDevs. end();++it){
+    INFO(it->second.get()->GetName());
+    auto dev=std::dynamic_pointer_cast<VDeviceDriver>(it->second);
+    if(dev==nullptr){
+      ERROR("Throw  "+it->second.get()->GetName()+" is NOT VDeviceDriver");
+      continue;
+    }
+    //WARNING("Devices are not daemonized");
+    dev->Daemonize ();
+  }
+  for(auto it=fDems. begin();it!=fDems. end();++it){
+    INFO(it->second.get()->GetName());
+    it->second.get()->Daemonize ();
+  }
+}
+
+void
+DeviceManager::Finalize  ()
+{
+  // note order is reverced
+  // reverce iterators are used
+  // and DEVICES are LAST
+  for(auto it=fDems.rbegin();it!=fDems.rend();++it){
+    INFO(it->second.get()->GetName());
+    it->second.get()->Finalize  ();
+  }
+  for(auto it=fDevs.rbegin();it!=fDevs.rend();++it){
+    INFO(it->second.get()->GetName());
+    it->second.get()->Finalize();
+  }
+  this->VDeviceBase::Finalize();
+  fDems.clear();
+  fDevs.clear();
+}
+
+
+
+  void
+DeviceManager::Configure(const std::string& cfg)
+{
+  YAML::Node config = YAML::LoadFile(cfg);
+  for(int nod_i=0;nod_i<config.size();++nod_i){
+    const std::string& drvtype=config[nod_i]["DriverType"].as<std::string>();
+    const std::string& devlble=config[nod_i]["Label"     ].as<std::string>();
+    const std::string& parlble=config[nod_i]["ParentLabel"].as<std::string>();
+    INFO(devlble);
+    if(drvtype=="CAEN_HVCrate"){
+      auto caen=std::make_shared<DrvCaenHV>(devlble,this); //potential problem
+      AddDevice(devlble,caen);
+      caen->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
+      caen->SetUsername ( config[nod_i]["Args"]["User"  ].as<std::string>());
+      caen->SetPassword ( config[nod_i]["Args"]["Pass"  ].as<std::string>());
+      auto updmap=config[nod_i]["Update"];
+      for(auto it=updmap.begin();it!=updmap.end();++it){
+        caen->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        INFO(it->first.as<std::string>());
+        INFO(it->second.as<std::string>());
+      }
+      // add f.f. 
+    } else if(drvtype=="BTF_amb"){
+      auto btfamb=std::make_shared<DrvBTFAmb>(devlble,this); //potential problem
+      AddDevice(devlble,btfamb);
+      btfamb->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
+      // btfamb->SetPort( config[nod_i]["Args"]["Port"].as<std::string>());
+      auto updmap=config[nod_i]["Update"];
+      for(auto it=updmap.begin();it!=updmap.end();++it){
+        btfamb->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        INFO(it->first.as<std::string>());
+        INFO(it->second.as<std::string>());
+      }
+      // add f.f
+    } else if(drvtype=="DiamondHV"){
+      auto diamondhv=std::make_shared<DrvPadmeDiamond>(devlble,this); //potential problem
+      AddDevice(devlble,diamondhv);
+      diamondhv->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
+      diamondhv->SetPort( config[nod_i]["Args"]["Port"].as<std::string>());
+      auto updmap=config[nod_i]["Update"];
+      for(auto it=updmap.begin();it!=updmap.end();++it){
+        diamondhv->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        INFO(it->first.as<std::string>());
+        INFO(it->second.as<std::string>());
+      }
+      // add f.f.
+    } else if(drvtype=="Caen8100"){
+      auto caen8100=std::make_shared<DrvCaen8100>(devlble,this); //potential problem
+      AddDevice(devlble,caen8100);
+      caen8100->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
+      auto updmap=config[nod_i]["Update"];
+      for(auto it=updmap.begin();it!=updmap.end();++it){
+        caen8100->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        INFO(it->first.as<std::string>());
+        INFO(it->second.as<std::string>());
+      }
+      // add f.f.
+    } else if(drvtype=="Caen8301"){
+      auto caen8301=std::make_shared<DrvCaen8301>(devlble,this); //potential problem
+      AddDevice(devlble,caen8301);
+      caen8301->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
+      auto updmap=config[nod_i]["Update"];
+      for(auto it=updmap.begin();it!=updmap.end();++it){
+        caen8301->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        INFO(it->first.as<std::string>());
+        INFO(it->second.as<std::string>());
+      }
+      // add f.f. 
+    } else if(drvtype=="EcalT"){
+      auto ecalt=std::make_shared<DrvEcalT>(devlble,this); //potential problem
+      AddDevice(devlble,ecalt);
+      ecalt->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
+      auto updmap=config[nod_i]["Update"];
+      for(auto it=updmap.begin();it!=updmap.end();++it){
+        ecalt->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        INFO(it->first.as<std::string>());
+        INFO(it->second.as<std::string>());
+      }
+
+      // add f.f. 
+    } else if(drvtype=="HV_Sipm"){
+      auto hvsipm=std::make_shared<DrvHVSipm>(devlble,this); //potential problem
+      AddDevice(devlble,hvsipm);
+      hvsipm->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
+      hvsipm->SetPort( config[nod_i]["Args"]["Port"].as<std::string>());
+      auto updmap=config[nod_i]["Update"];
+      for(auto it=updmap.begin();it!=updmap.end();++it){
+        hvsipm->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        INFO(it->first.as<std::string>());
+        INFO(it->second.as<std::string>());
+      }
+
+      // add f.f.
+    } else if(drvtype=="BTF_beam"){
+      auto btfbeam=std::make_shared<DrvBTFBeam>(devlble,this); //potential problem
+      AddDevice(devlble,btfbeam);
+      btfbeam->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
+      btfbeam->SetPort( config[nod_i]["Args"]["Port"].as<std::string>());
+      auto updmap=config[nod_i]["Update"];
+      for(auto it=updmap.begin();it!=updmap.end();++it){
+        btfbeam->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        INFO(it->first.as<std::string>());
+        INFO(it->second.as<std::string>());
+      }
+       
+      // add f.f.
+    } else if(drvtype=="PADME_amb"){
+      auto amb=std::make_shared<DrvPadmeAmb>(devlble,this); //potential problem
+      AddDevice(devlble,amb);
+      amb->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
+      auto updmap=config[nod_i]["Update"];
+      for(auto it=updmap.begin();it!=updmap.end();++it){
+        amb->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        INFO(it->first.as<std::string>());
+        INFO(it->second.as<std::string>());
+      }
+    }else if(drvtype=="CAEN_SY4527"){
+      auto caen=std::make_shared<DrvCaenSY4527>(devlble,Get(parlble).get());
+      Get(parlble)->AddDevice(devlble,caen);
+      auto updmap=config[nod_i]["Update"];
+      for(auto it=updmap.begin();it!=updmap.end();++it){
+        caen->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        INFO(it->first.as<std::string>());
+        INFO(it->second.as<std::string>());
+      }
+    }else if(drvtype=="CAEN_A7030N"){
+      auto board=std::make_shared<DrvCaenA7030N>(devlble,Get(parlble).get());
+      Get(parlble)->AddDevice(devlble,board);
+      board->GetParentInfo();
+      board->SetNumChannels ( config[nod_i]["Args"]["NChannels"  ].as<unsigned int>());
+      board->SetSlot        ( config[nod_i]["Args"]["Slot"       ].as<unsigned int>());
+      auto updmap=config[nod_i]["Update"];
+      for(auto it=updmap.begin();it!=updmap.end();++it){
+        board->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        INFO(it->first.as<std::string>());
+        INFO(it->second.as<std::string>());
+      }
+    }else if(drvtype=="ServiceTCPConfigure"){
+      unsigned int portn=config[nod_i]["Args"]["TCPPortNumber"  ].as<unsigned int>();
+      auto service=std::make_shared<ServiceTCPConfigure>(devlble,portn);
+      AddDaemon(devlble,service);
+    }else if(drvtype=="ServiceTCPInfo"){
+      unsigned int portn=config[nod_i]["Args"]["TCPPortNumber"  ].as<unsigned int>();
+      auto service=std::make_shared<ServiceTCPInfo>(devlble,portn);
+      AddDaemon(devlble,service);
+    }else throw fwk::Exception_tobefixed("Driver '"+drvtype+"' not known");
+    SUCCESS(devlble);
+  }
+
+
+
+
+  auto hvdumper=std::make_shared<HVDumper>();
+  AddDaemon("hvdumper",hvdumper);
+
+
+}
+
+
+
+
+bool DeviceManager::fsPrepareForQuit=false;
+
+  void
+DeviceManager::Sigint(int i)
+{
+  INFO("CTRL-C Trapped");
+  fsPrepareForQuit=true;
+}
+
+  void
+DeviceManager::MainLoop()
+{
+  int i=0;
+  while(!fsPrepareForQuit){
+    if((++i%100)==0){
+      unsigned int uptime=std::difftime(std::time(nullptr),fStartupTime);
+      unsigned int d=uptime/3600/24;
+      unsigned int h=(uptime/3600)%24;
+      unsigned int m=(uptime/60/24)%(60);
+      INFO(
+          "UPTIME  "+
+          std::to_string(uptime)+"  ("+
+          std::to_string(d)+"d"+
+          std::to_string(h)+"h"+
+          std::to_string(m)+"m)");
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  }
+}
+
+  void
+DeviceManager::TrapKillSignals()
+{
+  signal(SIGINT , Sigint);
+}

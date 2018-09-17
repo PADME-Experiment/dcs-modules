@@ -1,0 +1,46 @@
+  -----------------------------------------------------------------------------
+
+                   --- CAEN SpA - Computing Systems Division --- 
+
+  -----------------------------------------------------------------------------
+
+  CAEN V8100 Release Notes
+
+  -----------------------------------------------------------------------------
+
+  Rel. 1.0  -    September  2008
+
+  ----------------------------------------------------------------------------- 
+
+  Description
+  -----------
+
+  This document is updated for every official release of the CAENV8100 tool 
+  and it contains various information specific to this software which can not
+  be found in the User's Manual, available together with the software or on 
+  the CAEN web site: www.caen.it.
+
+
+ System Requirements
+ -------------------
+ 
+  - Linux kernel 2.4/2.6 and GNU C/C++ compiler
+  - For the VME8100_Manager:
+     - Java Run time >= 1.5
+     - RXTX >=2.0 (for RS232 Communication.) Download it at http://users.frii.com/jarvi/rxtx/download.html
+
+  What's New in Rel. 1.0
+  --------------------------
+
+   New Features and Important Notes
+   --------------------------------
+    - This is the first emission for each toolbox's component. 
+		See the SDK documentation to learn more about the supported features.
+
+  How to get support
+  ------------------
+
+  Our Software Support Group is available for questions, support and any other 
+  software related issue concerning CAEN products; for software support
+  visit the page www.caen.it/computing/support.php.
+

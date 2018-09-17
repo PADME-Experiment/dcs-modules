@@ -1,0 +1,177 @@
+#include "DrvPadmeAmb.h"   //in c file
+#include"fwk/utlCommaDashListToVector.h"
+// #include <caenlib/CAENHVWrapper.h>
+// #include "extern/CAENHVWrapper/CAENHVWrapper.h"
+#include <iostream>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <netdb.h>
+#include <time.h>       /* time_t, struct tm, difftime, time, mktime */
+
+using namespace std;
+
+  DrvPadmeAmb_except&
+DrvPadmeAmb_except::PadmeAmbRetStatus(int ambhandler,int retstatus, const std::string& add)
+{
+ std::string error=(
+  retstatus==0     ? "Command wrapper correctly executed"                                            :
+  retstatus==1     ? "Error of operatived system"                                                    :
+  retstatus==2     ? "Write error in communication channel"                                          :
+  retstatus==3     ? "Read error in communication channel"                                           :
+  retstatus==4     ? "Time out in server communication"                                              :
+  retstatus==5     ? "Command Front End application is down"                                         :
+  retstatus==6     ? "Communication with system not yet connected by a Login command"                :
+  "Unknown");
+
+
+  std::string str("PadmeAmbWrapper returned error ("+std::to_string(retstatus)+") :  "+error);
+  if(add.size()>0)str+="   "+add;
+
+  switch (retstatus){
+    case 1             : throw DrvPadmeAmb_except::Except_SYSERR               (str) ;break;
+    case 2             : throw DrvPadmeAmb_except::Except_WRITEERR             (str) ;break;
+    case 3             : throw DrvPadmeAmb_except::Except_READERR              (str) ;break;
+    case 4             : throw DrvPadmeAmb_except::Except_TIMEERR              (str) ;break;
+    case 5             : throw DrvPadmeAmb_except::Except_DOWN                 (str) ;break;
+    case 6             : throw DrvPadmeAmb_except::Except_NOTPRES              (str) ;break;
+  }
+}
+
+  int
+DrvPadmeAmb::ComInit()
+{
+  /* -------------- INITIALIZING VARIABLES -------------- */
+ int handle; // socket file descriptors
+ int portNum = 2705; // port number (same that server)
+ int bufsize = 1024; // buffer size
+ char buffer[1024]; // buffer to transmit
+ //char ip[] = "141.108.7.201"; // Server IP */
+
+ /* Structure describing an Internet socket address. */
+ struct sockaddr_in server_addr;
+
+ cout << "\n- Starting client..." << endl;
+
+ /* ---------- ESTABLISHING SOCKET CONNECTION ----------*/
+
+ handle = socket(AF_INET, SOCK_STREAM, 0);
+
+ if (handle < 0) {
+   DrvPadmeAmb_except::PadmeAmbRetStatus(handle,6, "IP = "+fIPAddress+" ");
+ }
+ 
+ server_addr.sin_family = AF_INET;
+ server_addr.sin_port = htons(portNum);
+
+ /*
+ * This function converts an Internet address (either IPv4 or IPv6)
+ * from presentation (textual) to network (binary) format.
+ * If the comunication is on the same machine, you can comment this line.
+ */
+ /* inet_pton(AF_INET, ip, &server_addr.sin_addr); */
+ char * ipaddress = new char[fIPAddress.size() + 1];
+ std::copy(fIPAddress.begin(), fIPAddress.end(), ipaddress);
+ ipaddress[fIPAddress.size()] = '\0'; // don't forget the terminating 0
+
+ inet_pton(AF_INET, ipaddress, &server_addr.sin_addr);
+
+ /* ---------- CONNECTING THE SOCKET ---------- */
+
+ int iretcon=connect(handle, (struct sockaddr *) &server_addr, sizeof(server_addr));
+ cout << " iretcon = " << iretcon << endl;
+ if(iretcon==0) {
+   cout << "- Connection to the server " << fIPAddress << " port number: " << portNum << endl;
+ } else {
+   DrvPadmeAmb_except::PadmeAmbRetStatus(handle,1, "IP = "+ fIPAddress+" ");   
+ }
+ 
+  return handle;
+}
+
+  void
+DrvPadmeAmb::ComDeinit(int handle)
+{
+  close(handle);
+  // int ret = PadmeAmb_DeinitSystem(handle);
+  // if(ret != AMB_OK)
+  // DrvPadmeAmb_except::PadmeAmbRetStatus(handle,ret);
+}
+
+
+
+  void
+DrvPadmeAmb::AssertInit()
+{
+  INFO("DrvPadmeAmb::AssertInit()");
+  //#warning CAEN ComInit
+  fPadmeAmbHandle=ComInit();
+  AssertInitAllOwned();
+  //ProcessUpdateListTemp();
+}
+
+void
+DrvPadmeAmb::Finalize()
+{
+  INFO("DrvPadmeAmb::Finalize()");
+  
+  int bufsize;
+  cout << " sending close of data to server "<< endl;
+  char buffer[70]="#";
+  send(fPadmeAmbHandle,buffer,1,0);
+  /*
+  // and wait for response
+  usleep(300000);
+  cout <<  " server says " ;
+  recv(fPadmeAmbHandle,buffer,60,0);
+  int length=strlen(buffer);
+  cout << buffer << " - length =  " << length << endl;
+  */
+  this->VDeviceBase::Finalize();
+  //#warning CAEN ComDeinit
+  ComDeinit(fPadmeAmbHandle);
+  JoinThread();
+}
+
+void
+DrvPadmeAmb::DebugDump()
+{
+   std::string fTemp  ("23.0");
+   std::string fRHumi ("45.0");
+   std::string timestamp;
+   
+  time_t rawtime;
+  struct tm * timeinfo;
+
+  time ( &rawtime );
+  timeinfo = localtime ( &rawtime );
+  //printf ( "The current date/time is: %s", asctime (timeinfo) );
+  timestamp=asctime(timeinfo);
+
+   
+   std::stringstream ss;
+   ss.str(std::string());ss.clear();ss<<"fTemperature    "<<fTemp <<" @- "<<timestamp;INFO(ss.str());
+   ss.str(std::string());ss.clear();ss<<"fRel Humidity   "<<fRHumi<<" @- "<<timestamp;INFO(ss.str());
+   
+}
+
+void
+DrvPadmeAmb::OnCycleLocal()
+{
+  int bufsize;
+  cout << " sending data to server "<< endl;
+  char buffer[80]="GetData";
+  send(fPadmeAmbHandle,buffer,9,0);
+  // and wait for response
+  usleep(300000);
+  cout <<  " server says " ;
+  recv(fPadmeAmbHandle,buffer,80,0);
+  int length=strlen(buffer);
+  cout << buffer << " - length =  " << length << endl;
+  
+}
+

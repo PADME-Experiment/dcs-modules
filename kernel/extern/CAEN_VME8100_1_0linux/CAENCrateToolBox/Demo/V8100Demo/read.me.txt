@@ -1,0 +1,24 @@
+/*****************************************************************************/
+/*                                                                           */
+/*                  --- CAEN SpA - Computing Division ---                    */
+/*                                                                           */
+/*   CAEN_VME8100_Manager         Installation and Use Instruction           */
+/*							                     */
+/*   April 2008 	                 			             */
+/*                                                                           */
+/*****************************************************************************/
+  
+ This archive contains the last release of the CAENVME8100Manager.
+
+
+ Content of the archive
+ ----------------------
+
+ VME8100_Manager.jar :  Java package contain all the classes to manage the CAENVME crate
+ readme.txt          :  This file
+
+ System Requirements
+ -------------------
+ 
+ - Java Run time >= 1.5
+ - RXTX >=2.0 (for RS232 Communication.) Download it at http://users.frii.com/jarvi/rxtx/download.html

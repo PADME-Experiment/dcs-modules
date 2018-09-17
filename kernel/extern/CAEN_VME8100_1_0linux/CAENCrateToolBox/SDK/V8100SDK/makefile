@@ -1,0 +1,45 @@
+
+LIB	=	libV8100SDK.so.1.0
+
+CC	=	gcc
+
+#COPTS	=	-fPIC -DLINUX -Wall 
+COPTS	=	-g -fPIC -DLINUX -Wall 
+
+FLAGS	=	-shared -Wall -nostartfiles -s
+#FLAGS	=	-shared -Wall,-soname -nostartfiles -s
+
+DEPLIBS	=       
+
+LIBS	=	
+
+INCLUDEDIR =	-I../ -I../common/include/ -I../common/src/
+
+INSTALLDIR =	/usr/lib
+
+OBJS	=	../common/board_commons.o ../common/com_phy_layer.o V8100.o V8301.o
+
+INCLUDES =	../common/common_defs.h ../common/board_commons.h ../common/com_phy_layer.h V8100.h V8301.h
+
+#########################################################################
+
+all	:	$(LIB)
+
+clean	:
+		/bin/rm -f $(OBJS) $(LIB)
+
+install	:	$(LIB)
+		/bin/rm -f $(INSTALLDIR)/libV8100SDK.so
+		install $(LIB) $(INSTALLDIR)
+		ln -sf $(INSTALLDIR)/$(LIB) $(INSTALLDIR)/libV8100SDK.so
+		ldconfig
+
+$(LIB)	:	$(OBJS)
+		/bin/rm -f $(BINLIB)
+		$(CC) $(FLAGS) -o $(LIB) $(OBJS) $(DEPLIBS)
+
+$(OBJS)	:	$(INCLUDES) makefile
+
+%.o	:	%.c
+		$(CC) $(COPTS) $(INCLUDEDIR) -c -o $@ $<
+
