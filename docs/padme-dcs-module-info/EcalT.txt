@@ -1,0 +1,19 @@
+ The Ecal has 40 Pt1000 thermocouples embedded with the crystals which are being read
+ by a KeySight 34972A Ethernet enabled unit (LXI).
+ The unit has 2 x 20 channel multiplexed resistance  sensing modules to read all 40 channels.
+
+ The readout via ethernet has to be done via LXI SCPI custom commands on the Keysight socket opened
+ inside padme DCS.
+ The units independently scans (within ~10 seconds) all 20 channels allocated on each module 2 times and sends
+ the scan result to the inquiring program.
+
+ The DrvEcalT module reads the output buffer and decodes the relevant informations per each
+ channel.
+
+ At the end we get per each channel an output of the form :
+ channel number        (int : 101 to 120 - 1.st module ; 201 to 220 - 2.nd module)
+ temp in C degrees     (float : example = 25.745000 )
+ error code            (int - 0 means OK )  
+ readout timestamp     (ex : 17-9-2018 18:57:50.712000 as recorded by keysight clock- set at the actual CEST time)
+
+ The module gets the full list of all channels and can output it to the control DeCeSe program.
