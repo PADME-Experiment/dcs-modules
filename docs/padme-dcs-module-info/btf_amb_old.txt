@@ -1,0 +1,59 @@
+Ciao Fabio
+
+i dati sono disponibili su MC
+
+noi li leggiamo con script in crontab
+
+# m h  dom mon dow   command
+*/1 * * * * /home/btfstaff/workspace/PTU/ptu.sh
+55 23 * * *  /home/btfstaff/workspace/PTU/saveptu.sh
+
+
+(uno legge e pulisce i dati, uno scrive i file)
+
+lo script che legge dal sensore
+PTU_WORK=$HOME/workspace
+PTU_HOME=$PTU_WORK/PTUdata
+PTU_SH=$PTU_WORK/PTU
+PTU_SENS=$(GET "http://192.168.189.180/epocasi.html" | tail -3 | dos2unix |  sed
+ ':a;N;$!ba;s/\n/,/g' )
+PTU_DATE2=$(date -u +%F" "%X)
+PTU_DATE1=$(date -u +%s)
+PTU_PAY="$PTU_DATE1","$PTU_SENS","$PTU_DATE2"
+echo $PTU_PAY >> $PTU_HOME/PTU.txt
+$PTU_SH/ptuMC $PTU_PAY
+
+
+la chiave PTU_SENS fa la lettura dalla sonda e con un sed si pulisce e si estrae dall'html (si puo' fare in 100 maniere differenti)
+nell ultima riga lo si spara su MC server "testchaos.lnf.infn.it" nella chiave "BTF_ptuhall"
+
+ti allego un fle di esempio:
+
+installa libmemcached
+
+che si compila con
+gcc mcget_ptu.c -o readptu -lmemcached
+
+per lanciarlo
+./readptu
+
+Ti ritornera'
+Added server successfully
+Yay!
+Key retrieved successfully
+The key 'BTF_ptuhall' on server 'testchaos' returned value '1512575461,15.6,43.1,1009.5,2017-12-06 15:51:01
+'.
+
+Il contenuto della chiave e'
+1512575461,15.6,43.1,1009.5,2017-12-06 15:51:01
+
+il cui formato dati e':
+
+# The meteo data file fetched from Comet T7510 sensor are saved
+# in this format (comma value separated):
+# 1 => seconds since 1970-01-01 00:00:00 UTC
+# 2 => temperature [Celsius degrees]
+# 3 => relative humidity [%]
+# 4 => pressure [mb]
+# 5 => year-month-day hour:minutes:second in UTC format
+

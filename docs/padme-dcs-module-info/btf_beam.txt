@@ -1,0 +1,62 @@
+BTF-DAQ data specification
+
+The BTF-DAQ is a dynamic composition of different modules, each one of those is run-time switchable on and off
+Here is a standard configuration, with some modules in a VME crate, other in NIM crate and again as standalone:
+
+Delay Programmable Unit
+Scaler
+Silicon Microstrip chamber
+Peak Detector
+QDC
+TDC
+
+The server which houses the memcached server servicing the information directly from BTF DAQ is plbtfhactr001.lnf.infn.it
+and the key to be called is DAQ_BTF.
+
+
+Here a sample of one line in output from BTF DAQ
+This example datastream has: - SINGLE event mode: one event(ok trigger) per buffer - only one running board (QDC2)
+
+Here an example row of the datastream (\n unix terminated): 1 73 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 16375 8471 0 10 18775 19964 42 314 134 1065 106 816 106 833 151 1180 134 1034 145 1168 30 251 131 1038 134 1076 159 1231 154 1232 146 1118 164 1262 141 1118 149 1182 0 -1697888 165123 1 1 1
+
+
+SINGLE event mode
+
+Data stream Header + Word number per event + Active DAQ Boards List
+1 73 0 0 0 1 0 0 0 0
+The first data in the data stream row is the "event per row" and it is the header of the each row in the data stream, recording the number of event acquired per DAQ Cycle (row)
+
+event per row (1) + event number of data word space separated (73)+ agile silicon on/off (1/0) + peak sensitive on/off (1/0) + qdc1 on/off (1/0) + qdc2 on/off (1/0) + tdc1 on/off (1/0) + qdc3 on/off (1/0) + tdc2 on/off (1/0) + spare on/off (1/0)
+
+Default scaler data
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 16375 8471 0 10 18775 19964
+These 32 words belonging to the BTF scaler and they are included in the datastream as default:
+First word is scaler channel1 (data=0) (counting is reset on DAQ restart every time)
+the last is scaler channel 32 (data=19964) (counting is reset on DAQ restart every time)
+word 31 and 32 are, respectively, trigger acquired and the overall trigger received
+
+DAQ Active Board data
+42 314 134 1065 106 816 106 833 151 1180 134 1034 145 1168 30 251 131 1038 134 1076 159 1231 154 1232 146 1118 164 1262 141 1118 149 1182
+These are 32 word belonging to the V965 16 channels (it is, in this example, the only active element in addition to the scaler: 0 0 0 1 0 0 0 0).
+BTF version of the V965 has 16 charge coupled channels (chXX-hirange chXX-lowrange): for each couple the range is 800pC (first data channel on the stream) and 100pC (the other one). These data are not pedestal subtracted and V965 channel counting starts from channel0.
+
+What more specifically concerns PADME DCS is the following, in particular the last 4 words: (last word of Timing 
+data and all 3 words of Data stream Tail)
+
+
+Timing data
+0 -1697888 165123
+are BTF machine and DAFNE status
+
+0 every time,
+-1697888 ms clock count of BTFDAQ processor,
+165123 is the local time (GMT +1) in the format HHMMSS
+
+
+Data stream Tail
+1 1 1
+
+1 1 1 is, respectively:
+electron/positron LINAC phase (0/1)
+modulator on/off(1/0)
+gun on/off(1/0)

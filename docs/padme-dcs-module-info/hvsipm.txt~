@@ -1,0 +1,17 @@
+JSON response of the NIM module for HV SiPM
+
+
+ http://192.168.62.50/brdcfg.cgx    -- board configuration
+
+example json return string :
+{"id":"","ipAdr":"192.168.0.100","macAdr":"62:A4:17:80:FF:0D",
+"name":"PADME-NIM","sn":"FG001","hwVer":"1.0","swVer":"1.0.168"}
+
+
+ http://192.168.62.50/brdusr.cgx   -- channels status
+
+ a unique (long) json string with, for each channel repeated for the number of enabled channels,
+ a string with fields :
+"id":"1","ch":"1","cardSts":"0","hvReq":"40.0","hvLvl":"39.9","cardTemp":"26.7","apdCurrent":"0.4",
+"apdTemp":"27.1","cardSsupplyV":"234.2","errSts":"0","errCnt":"0","lastErr":"0"
+

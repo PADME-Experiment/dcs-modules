@@ -1,0 +1,62 @@
+#!/bin/dot -Tsvg
+
+digraph PADME_basic {
+  newrank=true;/*{{{*/
+  //graph[rankstep=2] doesnt work....
+  remincross=true;
+  compound=true;
+  graph [ layout=dot] //, ratio=auto, splines=true, splines=spline];
+  //graph [rankdir=LR];
+
+  //graph[splines=true, splines=spline];
+  //edge [splines=false, splines="",fontcolor=red, label="UU"];
+  //edge[dir=both,label="edge"];
+  //fontsize=26;
+  fontnames=svg;
+  node[shape=record];/*}}}*/
+
+
+  //label="Padme Basic Scheme";
+  graph[style=filled color=pink];node[style=filled,fillcolor=white]
+
+
+    HI[fillcolor=pink]
+    DCS[fillcolor=orange]
+    RC [fillcolor=yellow]
+    Acc[fillcolor=grey,shape=Mcircle]
+    Aux[fillcolor=grey]
+    Sup[fillcolor=red]
+    Det[fillcolor=grey]
+    DAQ[shape=house]
+    TRG[shape=invtriangle]
+    DB[shape=cylinder,fillcolor=cyan]
+    CDR[shape=cylinder,fillcolor=green]
+    FW[fillcolor=lightblue]
+    Anl[shape=pentagon,fillcolor=greenyellow]
+    Discovery[label="A'\nDiscovery",shape=tripleoctagon,fillcolor=black,fontcolor=white,fontsize=30]//star]
+
+    HI->{RC,DCS}
+    RC->{DAQ,TRG}
+    DCS->{ Acc Aux Sup Det}
+    Aux->Acc//[constraint=false]
+    Acc->Det//[constraint=false]
+    Sup->Det
+    Acc->TRG[constraint=false]
+    TRG->DAQ
+    Det->DAQ
+    DAQ->FW
+    FW->CDR
+    //DB->FW
+    FW->DB
+
+    RC->DB[dir=both]
+    DCS->DB[dir=both]
+    CDR->Anl->Discovery
+    DB-> Anl[dir=both]
+    HI->Acc
+
+
+
+
+
+}
