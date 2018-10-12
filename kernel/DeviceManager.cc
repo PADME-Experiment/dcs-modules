@@ -197,7 +197,7 @@ DeviceManager::Configure(const std::string& cfg)
       auto hvsipm=std::make_shared<DrvHVSipm>(devlble,this); //potential problem
       AddDevice(devlble,hvsipm);
       hvsipm->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
-      hvsipm->SetPort( config[nod_i]["Args"]["Port"].as<std::string>());
+      //hvsipm->SetPort( config[nod_i]["Args"]["Port"].as<std::string>());
       auto updmap=config[nod_i]["Update"];
       for(auto it=updmap.begin();it!=updmap.end();++it){
         hvsipm->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());

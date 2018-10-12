@@ -116,6 +116,7 @@ void
 DrvBTFAmb::OnCycleLocal()
 {
 
+  string filename="file.out";
   int handle;
 
 
@@ -124,13 +125,14 @@ DrvBTFAmb::OnCycleLocal()
 
   string command = "GET \"http://";
   string ipaddress=fIPAddress;
-  string rest = "/epocasi.html\" | tail -3 > file.out";
+  string rest = "/epocasi.html\" | tail -3 >"+filename;
   
   command+=ipaddress;
   command+=rest;
 
   const char * commandc=command.c_str();
   
+ repeatread: 
   // execute command
   system(commandc);
 
@@ -139,7 +141,6 @@ DrvBTFAmb::OnCycleLocal()
   int iline=0;					\
   float var[3];
   string line;
-  string filename="file.out";
   ifstream myfile (filename);
 
   time_t rawtime;
@@ -158,30 +159,78 @@ DrvBTFAmb::OnCycleLocal()
     // cout << "Cannot open input file.\n";
     fprintf(stderr, "Couldn't open file : %s\n", filename.c_str());
     DrvBTFAmb_except::BTFAmbRetStatus(handle,3, "IP = "+fIPAddress+" ");
-    // return 1;
+    return;
   }
   
   int i=0;
   
   while(myfile) {
     getline(myfile,line);  // delim defaults to '\n'
-    if(i<3) {
-      // cout << "i = " << i << " " << line << endl;
-      var[i]=stof(line);
+    //b check if string OK
+    string str2 ("Can't connect");
+    size_t found = line.find(str2);
+
+    if(found == 0)
+    {
+     printf(" Could not connect to device -retrying\n");
+     //DrvBTFAmb_except::BTFAmbRetStatus(handle,5, "IP = "+fIPAddress+" ");
+     sleep(2);
+     goto repeatread;
     }
-    i++;
+    else {
+      if(i<3) {
+	// cout << "i = " << i << " " << line << endl;
+	var[i]=stof(line);
+      }
+      i++;
+    }
   }
   
   myfile.close();
   
+  FILE * pFile;
+  // int n;
+  std::string filename1="data/BTFAmb";
+  pFile = fopen (filename1.c_str(),"w");
+
   printf(" BTFAmb - Starting client on %s \n",fIPAddress.c_str());  
   printf(" command is %s \n",commandc);
   printf("Timestamp = %s \n",timestamp);
+  // fprintf(pFile,"%.24s \n",timestamp);
+ 
   for(int ii=0;ii<3;ii++) {
     printf(" var %d = %f \n",ii,var[ii]);
   }
+
   
+  // write values to file
+  fprintf(pFile," %.24s;%f;%f;%f \n",timestamp,var[0],var[1],var[2]);
+  fclose(pFile);
+
   system("rm file.out");
+
+  // and send value to file
+  FILE * pFile3;
+  std::string filename3="BTFAMB.txt";
+  pFile3 = fopen (filename3.c_str(),"w");
+
+  // write values to file
+  fprintf(pFile3,"PLOTID DCS_BTF_Temp \nPLOTNAME BTF Ambient Data for Padme \nPLOTTYPE text \n");
+  fprintf(pFile3,"DATA  [ [\"Timestamp\",\"%.24s\"]",timestamp);
+  fprintf(pFile3,",[\"BTF Temperature - C\",\%.2f]",var[0]);
+  fprintf(pFile3,",[\"BTF Relative humidity \",\%.2f]",var[1]);
+  fprintf(pFile3,",[\"Atm. pressure - mbar \",%.3f] ]\n",var[2]);
+  fclose(pFile3);
+
+  // and copy file to monitor@l0padme3
+  string scp2="scp -q BTFAMB.txt monitor@l0padme3:PadmeMonitor/watchdir/. ";
+  // cout << " scp command " << scp2 << endl; 
+  char * writable2 = new char[scp2.size() + 1];
+  std::copy(scp2.begin(), scp2.end(), writable2);
+  writable2[scp2.size()] = '\0'; // don't forget the terminating 0
+  // scp to monitor@l0padme3
+  system(writable2);
+
   
 }
 

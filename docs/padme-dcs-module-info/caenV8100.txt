@@ -1,36 +1,40 @@
 CAEN V8100 (VME Crates)
 
-padme-dcs reads via caenvme library the following from the V8100 VME Crates:
+the DrvCaen8100 module  reads via caenvme library the following from the V8100 VME Crates:
 
 
-1) Timestamp of the callout from l0padme1 	       (timestamp)
-2) VME crate type					(text)
-3) IP address						(text)
-4) MAC address of the unit being read 			(text)
-5) channels number  	      	   	 		(int)
-6) fanspeed 						(double)
-7) monitor_fan1  (rpm)	   				(uint32)
-8) monitor_fan2  (rpm)	   				(uint32)
-9) monitor_fan3  (rpm)	   				(uint32)
-10) fu temp       (C degrees)				(double)
-11) ps temp	  (C degrees)				(double)
+1) Timestamp of the callout from l0padme1 (CET)	       (timestamp)
+2) IP address						(text)
+3) number of read channels [3]  	   	 	(int)
+4) fanspeed   set  [from 0 to 6]			(uint32)
+5) monitor_fan1  (rpm)	   				(uint32)
+6) monitor_fan2  (rpm)	   				(uint32)
+7) monitor_fan3  (rpm)	   				(uint32)
+8) fu temp       (C degrees)				(double)
+9) ps temp	  (C degrees)				(double)
 
-then for each voltage channel (3)  we have the readout of :
+then for each of the 3 voltage channels  we have the readout of :
 	
-1) number of channel (1-3)				(int)
+1) number of channel (0-2)				(int)
 2) name of mon channel					(text)
 3) vset - set voltage standard				(double)
 4) vmin - for alarm   					(double)
 5) vmax - for alarm					(double)
 6) vmon - actual voltage read				(double)
-7) iset - set voltage standard				(double)
+7) iset - set current standard				(double)
 8) imin - for alarm   					(double)
 9) imax - for alarm					(double)
-10) imon - actual voltage read				(double)
+10) imon - actual current read				(double)
 
+All values are written and updated about every 30 secs in the above form (separator is always ; character)
+in the file padme-dcs/data/CAEN8100_ipnumber (we have 2 independently monitored crates)
 
-all quantities are available from padme-dcs as vales as apecified above
+example :
 
+Wed Oct 10 12:50:50 2018;192.168.62.4;3;6;2850;2820;2850;26.000000;35.000000
+0;+5V;5.000000;4.750000;5.250000;5.010000;220.000000;0.000000;220.000000;72.000000 
+1;+12V;12.000000;11.400000;12.600000;12.020000;23.000000;0.000000;23.000000;2.450000 
+2;-12V;12.000000;11.400000;12.600000;12.000000;23.000000;0.000000;23.000000;0.100000 
 
 
  

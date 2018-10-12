@@ -1,0 +1,145 @@
+#- Args: {IPAddr: 192.168.62.101,Port: 11211}
+#  Label: "PADMEAMB"
+#  ParentLabel: "PADME"
+#  DriverType: "PADME_amb"
+#  Update: {"*": 15}
+#
+- Args: {IPAddr: 192.168.62.3}
+  Label: "Caen8100-R"
+  ParentLabel: "PADME"
+  DriverType: "Caen8100"
+  Update: {"*": 30}
+
+- Args: {IPAddr: 192.168.62.4}
+  Label: "Caen8100-L"
+  ParentLabel: "PADME"
+  DriverType: "Caen8100"
+  Update: {"*": 30}
+
+- Args: {IPAddr: 192.168.62.20}
+  Label: "Caen8301-R"
+  ParentLabel: "PADME"
+  DriverType: "Caen8301"
+  Update: {"*": 30}
+  
+- Args: {IPAddr: 192.168.189.180}
+  Label: "BTFAMB"
+  ParentLabel: "PADME"
+  DriverType: "BTF_amb"
+  Update: {"*": 10}
+
+#  old way of asking BTFAMB via memcached
+# - Args: {IPAddr: testchaos.lnf.infn.it, Port: 11211}
+#  Label: "BTFAMB"
+#  ParentLabel: "PADME"
+#  DriverType: "BTF_amb"
+#  Update: {"*": 10}
+
+
+- Args: {IPAddr: 192.168.198.164, Port: 11211}
+  Label: "BTFBEAM"
+  ParentLabel: "PADME"
+  DriverType: "BTF_beam"
+  Update: {"*": 6}
+
+#pveto 1
+- Args: {IPAddr: 192.168.62.62}
+  Label: "HVSipm19"
+  ParentLabel: "PADME"
+  DriverType: "HV_Sipm"
+  Update: {"*": 10}
+
+#pveto 2
+- Args: {IPAddr: 192.168.62.56}
+  Label: "HVSipm13"
+  ParentLabel: "PADME"
+  DriverType: "HV_Sipm"
+  Update: {"*": 10}
+
+#pveto 3
+- Args: {IPAddr: 192.168.62.58}
+  Label: "HVSipm15"
+  ParentLabel: "PADME"
+  DriverType: "HV_Sipm"
+  Update: {"*": 10}
+
+#pveto 4
+#- Args: {IPAddr: 192.168.62.61}
+- Args: {IPAddr: 192.168.62.63}
+  Label: "HVSipm21"
+  ParentLabel: "PADME"
+  DriverType: "HV_Sipm"
+  Update: {"*": 10}
+
+#pveto 5
+- Args: {IPAddr: 192.168.62.65}
+  Label: "HVSipm23"
+  ParentLabel: "PADME"
+  DriverType: "HV_Sipm"
+  Update: {"*": 10}
+
+#pveto 6
+- Args: {IPAddr: 192.168.62.59}
+  Label: "HVSipm16"
+  ParentLabel: "PADME"
+  DriverType: "HV_Sipm"
+  Update: {"*": 10}
+
+#eveto 1
+- Args: {IPAddr: 192.168.62.52}
+  Label: "HVSipm07"
+  ParentLabel: "PADME"
+  DriverType: "HV_Sipm"
+  Update: {"*": 10}
+
+#eveto 2
+- Args: {IPAddr: 192.168.62.64}
+  Label: "HVSipm22"
+  ParentLabel: "PADME"
+  DriverType: "HV_Sipm"
+  Update: {"*": 10}
+
+#eveto 3
+- Args: {IPAddr: 192.168.62.66}
+  Label: "HVSipm24"
+  ParentLabel: "PADME"
+  DriverType: "HV_Sipm"
+  Update: {"*": 10}
+
+#eveto 4
+- Args: {IPAddr: 192.168.62.57}
+  Label: "HVSipm14"
+  ParentLabel: "PADME"
+  DriverType: "HV_Sipm"
+  Update: {"*": 10}
+
+#eveto 5
+- Args: {IPAddr: 192.168.62.53}
+  Label: "HVSipm08"
+  ParentLabel: "PADME"
+  DriverType: "HV_Sipm"
+  Update: {"*": 10}
+
+#eveto 6
+- Args: {IPAddr: 192.168.62.54}
+  Label: "HVSipm10"
+  ParentLabel: "PADME"
+  DriverType: "HV_Sipm"
+  Update: {"*": 10}
+
+
+#- Args: {IPAddr: 192.168.62.120}
+#  Label: "EcalT"
+#  ParentLabel: "PADME"
+#  DriverType: "EcalT"
+#  Update: {"*": 30}
+
+- Args: {TCPPortNumber: 33455}
+  Label: "tcp_conf"
+  ParentLabel: "PADME"
+  DriverType: ServiceTCPConfigure
+
+- Args: {TCPPortNumber: 33456}
+  Label: "tcp_info"
+  ParentLabel: "PADME"
+  DriverType: ServiceTCPInfo

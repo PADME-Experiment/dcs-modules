@@ -207,6 +207,14 @@ void DrvCaen8301::OnCycleLocal()
   printf(" closing connection to %s \n",ip);
   V8301_close(&vme_handler);
 
+  FILE * pFile;
+  // int n;
+  std::string filename="data/CAEN8301_";
+  filename+=fIPAddress;
+
+  pFile = fopen (filename.c_str(),"w");
+
+
   // int numch=int(numch_8);
   // then print it out for debug
   printf(" Timestamp = %.25s \n",timestamp);
@@ -214,10 +222,46 @@ void DrvCaen8301::OnCycleLocal()
   printf(" fanspeed = %d - mon_fan1=%u - mon_fan2=%u - mon_fan3=%u \n",fanspeed,mon_fan1,mon_fan2,mon_fan3);
   printf(" futemp= %f  - pstemp= %f \n",futemp,pstemp);
   
+  fprintf(pFile,"%.24s;%d;%d;%u;%u;%u;%f;%f\n",timestamp,numch,fanspeed,mon_fan1,mon_fan2,mon_fan3,futemp,pstemp);
+
+
   for(int nch=0;nch<numch;nch++){
     printf(" nch = %d - mon_name = %s \n",nch,mon_name[nch]);
     printf(" vmon=%f \n",vmon[nch]);
     printf(" iset=%f - imin=%f - imax=%f - imon=%f \n",iset[nch],imin[nch],imax[nch],imon[nch]);
+    fprintf(pFile,"%d;%s;%f;%f;%f;%f;%f \n",nch,mon_name[nch],vmon[nch],iset[nch],imin[nch],imax[nch],imon[nch]);
   }
+  fclose(pFile);
 
+  // and print to monitor fan speed and temp
+   // and send value to file
+  FILE * pFile3;
+  std::string filename3="CAENNIMright";
+  filename3+=".txt";
+  pFile3 = fopen (filename3.c_str(),"w");
+
+  // write values to file
+  fprintf(pFile3,"PLOTID CAEN_NIM_right \nPLOTNAME CAEN NIM crate fan and temp \nPLOTTYPE text \n");
+  fprintf(pFile3,"DATA  [ [\"Timestamp\",\"%.24s\"]",timestamp);
+  fprintf(pFile3,",[\"IP address \",\"%s\"]",ipaddr);
+  fprintf(pFile3,",[\"FAN setup speed \",\%d]",fanspeed);
+  fprintf(pFile3,",[\"FAN1 speed \",\%u]",mon_fan1);
+  fprintf(pFile3,",[\"FAN2 speed \",\%u]",mon_fan2);
+  fprintf(pFile3,",[\"FAN3 speed \",\%u]",mon_fan3);
+  fprintf(pFile3,",[\"FU temp \",\%.2f]",futemp);
+  fprintf(pFile3,",[\"PS temp \",\%.2f] ]\n",pstemp);
+  fclose(pFile3);
+
+  // and copy file to monitor@l0padme3
+  std::string scp2="scp -q ";
+  scp2+=filename3;
+  scp2+=" monitor@l0padme3:PadmeMonitor/watchdir/. ";
+  // cout << " scp command " << scp2 << endl; 
+  char * writable2 = new char[scp2.size() + 1];
+  std::copy(scp2.begin(), scp2.end(), writable2);
+  writable2[scp2.size()] = '\0'; // don't forget the terminating 0
+  // scp to monitor@l0padme3
+  system(writable2);
+
+				
 }

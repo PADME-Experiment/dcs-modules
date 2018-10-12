@@ -191,15 +191,25 @@ DrvPadmeAmb::OnCycleLocal()
   // here get value from memcache server
   retrieved_value = memcached_get(memc, key, strlen(key), &value_length, &flags, &rc);
   //printf("Yay!\n");
-  
+
+  FILE * pFile;
+  // int n;
+  std::string filename="data/PadmeAmb";
+
   if (rc == MEMCACHED_SUCCESS) {
     // fprintf(stderr, "Key retrieved successfully - ik=%d \n",ik);
     // printf("The key '%s' on server '%s' returned value '%s'.\n", key,serv,retrieved_value);
     cout <<  " PADME Amb memcache key " << key << " server says " ;
     int length=value_length;
     cout << retrieved_value << " - length =  " << length << endl;
+
+    // and print key value to file
+    pFile = fopen (filename.c_str(),"w");
+    fprintf(pFile,"%s \n",retrieved_value);
+    fclose(pFile);
+    
     free(retrieved_value);
-      
+     
   } else {
     fprintf(stderr, "Couldn't retrieve key %s: %s\n", key,memcached_strerror(memc, rc));
     DrvPadmeAmb_except::PadmeAmbRetStatus(handle,3, "IP = "+fIPAddress+" ");
