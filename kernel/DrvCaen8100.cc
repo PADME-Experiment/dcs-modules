@@ -7,6 +7,7 @@ extern "C"{
 #include"V8100.h"
 }
 
+
 #include<iostream>
 #include <unistd.h>
 #include <time.h>       /* time_t, struct tm, difftime, time, mktime */
@@ -17,7 +18,7 @@ extern "C"{
 DrvCaen8100_except::CAEN8100RetStatus(int retstatus, const std::string& add)
   {std::string error=(
 		       retstatus==0     ? "Command wrapper correctly executed"                                            :
-		       retstatus==1     ? "Error of operatived system"                                                    :
+		       retstatus==1     ? "Error of operative system"                                                    :
 		       retstatus==2     ? "Write error in communication channel"                                          :
 		       retstatus==3     ? "Read error in communication channel"                                           :
 		       retstatus==4     ? "Time out in server communication"                                              :
@@ -43,7 +44,7 @@ int DrvCaen8100::ComInit(V8100_data vme_handler)
   // try to open the connection
   retbool=V8100_open_eth(&vme_handler,ip);
   if(retbool != true){
-    DrvCaen8100_except::CAEN8100RetStatus(1,
+    DrvCaen8100_except::CAEN8100RetStatus(3,
 					  "IP = "+fIPAddress);
     return 1;
   }
@@ -82,6 +83,7 @@ void DrvCaen8100::Finalize()
 
 void DrvCaen8100::OnCycleLocal()
 {
+  int ierrors = 0;
   CMD_ERROR_CODE err;
   bool retbool;
   // V8100_data vme_handler;
@@ -90,25 +92,29 @@ void DrvCaen8100::OnCycleLocal()
   sleep(30);
 
   const char *ip = fIPAddress.c_str();
+
+  //  label retry open
+retry_open:
+
   printf(" opening connection to %s \n",ip);
   // try to open the connection
   retbool=V8100_open_eth(&vme_handler,ip);
   if(retbool != true){
-    DrvCaen8100_except::CAEN8100RetStatus(1,
-					  "IP = "+fIPAddress);
+    ierrors++;
+    if(ierrors<3) {
+      //DrvCaen8100_except::CAEN8100RetStatus(3,"IP = "+fIPAddress);
+     ERROR("DrvCaen8100  error reading socket ! retrying ..");
+     printf(" retry opening the socket %d ...",ierrors);
+     return;
+     // goto retry_open;
+    } else {
+     DrvCaen8100_except::CAEN8100RetStatus(1,"IP = "+fIPAddress);
+     printf(" Socket to %s closed \n",ip);
+     // goto end_all;
+     return; 
+    }
   }
 
-  time_t rawtime;
-  struct tm * timeinfo;
-  char *timestamp;
-
-  time ( &rawtime );
-  timeinfo = localtime ( &rawtime );
-  //printf ( "The current date/time is: %s", asctime (timeinfo) );
-  timestamp=asctime(timeinfo);
-  int lengthstr=strlen(timestamp);
-  //printf(" timestamp length = %d \n",lengthstr);
-  timestamp[lengthstr]='\0';
 
   UINT8 ui8;
   UINT32 ui32;
@@ -162,7 +168,7 @@ void DrvCaen8100::OnCycleLocal()
   V8100_FAN_SPEED_SET  fanspeed;
   V8100_crate_status crate_stat;
 
-  UINT8 numch_8;
+  UINT8 numch_8=3;
   float pstemp;
   UINT32 mon_fan1;
   UINT32 mon_fan2;
@@ -175,7 +181,9 @@ void DrvCaen8100::OnCycleLocal()
 
   ret_bool=V8100_mon_crname ( &vme_handler, crname,length, &err);
   // std::cout<<"mon_crname   "<<chararr       <<std::endl;
-  ret_bool=V8100_mon_numch  ( &vme_handler, &numch_8          , &err);
+  
+  // numch gives problem sometimes
+  //ret_bool=V8100_mon_numch  ( &vme_handler, &numch_8          , &err);
   // std::cout<<"mon_numch    "<<+ui8          <<std::endl;
   // ret_bool=V8100_mon_psfrel ( &vme_handler, chararr,length, &err);std::cout<<"mon_psfrel   "<<chararr       <<std::endl;
   ret_bool=V8100_mon_pstemp ( &vme_handler, &pstemp            , &err);
@@ -207,20 +215,83 @@ void DrvCaen8100::OnCycleLocal()
   // std::cout<<"mon_macadd   "<<chararr       <<std::endl;
 
   printf(" closing connection to %s \n",ip);
+
+  // and close the socket
   V8100_close(&vme_handler);
+
+  time_t rawtime;
+  struct tm * timeinfo;
+  char *timestamp;
+
+  time ( &rawtime );
+  timeinfo = localtime ( &rawtime );
+  //printf ( "The current date/time is: %s", asctime (timeinfo) );
+  timestamp=asctime(timeinfo);
+  int lengthstr=strlen(timestamp);
+  //printf(" timestamp length = %d \n",lengthstr);
+  timestamp[lengthstr]='\0';
+
+  FILE * pFile;
+  // int n;
+  std::string filename="data/CAEN8100_";
+  filename+=fIPAddress;
+
+  pFile = fopen (filename.c_str(),"w");
 
   int numch=int(numch_8);
   // then print it out for debug
-  printf(" Timestamp = %.25s \n",timestamp);
+  printf(" Timestamp = %.24s \n",timestamp);
   printf(" VME CRATE %s - IP = %s - MAC = %s -numch = %d \n",crname,ipaddr,macaddr,numch);
   printf(" fanspeed = %d - mon_fan1=%u - mon_fan2=%u - mon_fan3=%u \n",fanspeed,mon_fan1,mon_fan2,mon_fan3);
   printf(" futemp= %f  - pstemp= %f \n",futemp,pstemp);
 
+  fprintf(pFile,"%.24s;%s;%d;%d;%u;%u;%u;%f;%f\n",timestamp,ipaddr,numch,fanspeed,mon_fan1,mon_fan2,mon_fan3,futemp,pstemp);
   
-  for(int nch=0;nch<3;nch++){
+  for(int nch=0;nch<numch;nch++){
     printf(" nch = %d - mon_name = %s \n",nch,mon_name[nch]);
     printf(" vset=%f - vmin=%f - vmax=%f - vmon=%f \n",vset[nch],vmin[nch],vmax[nch],vmon[nch]);
     printf(" iset=%f - imin=%f - imax=%f - imon=%f \n",iset[nch],imin[nch],imax[nch],imon[nch]);
+
+    fprintf(pFile,"%d;%s;%f;%f;%f;%f;%f;%f;%f;%f \n",nch,mon_name[nch],vset[nch],vmin[nch],vmax[nch],vmon[nch],iset[nch],imin[nch],imax[nch],imon[nch]);
   }
+
+  fclose(pFile);
+
+  // and print to monitor fan speed and temp
+   // and send value to file
+  FILE * pFile3;
+  std::string right="192.168.62.3";
+  std::string left="192.168.62.4";
+  std::string position="boh";
+  if (fIPAddress.compare(right)==0)  position.assign("right");
+  if (fIPAddress.compare(left)==0)   position.assign("left");
+  std::string filename3="CAENVME";
+  filename3+=position;
+  filename3+=".txt";
+  pFile3 = fopen (filename3.c_str(),"w");
+
+  // write values to file
+  fprintf(pFile3,"PLOTID CAEN_VME_%s \nPLOTNAME CAEN VME crate fan and temp \nPLOTTYPE text \n",position.c_str());
+  fprintf(pFile3,"DATA  [ [\"Timestamp\",\"%.24s\"]",timestamp);
+  fprintf(pFile3,",[\"IP address \",\"%s\"]",ipaddr);
+  fprintf(pFile3,",[\"FAN setup speed \",\%d]",fanspeed);
+  fprintf(pFile3,",[\"FAN1 speed \",\%u]",mon_fan1);
+  fprintf(pFile3,",[\"FAN2 speed \",\%u]",mon_fan2);
+  fprintf(pFile3,",[\"FAN3 speed \",\%u]",mon_fan3);
+  fprintf(pFile3,",[\"FU temp \",\%.2f]",futemp);
+  fprintf(pFile3,",[\"PS temp \",\%.2f] ]\n",pstemp);
+  fclose(pFile3);
+
+  // and copy file to monitor@l0padme3
+  std::string scp2="scp -q ";
+  scp2+=filename3;
+  scp2+=" monitor@l0padme3:PadmeMonitor/watchdir/. ";
+  // cout << " scp command " << scp2 << endl; 
+  char * writable2 = new char[scp2.size() + 1];
+  std::copy(scp2.begin(), scp2.end(), writable2);
+  writable2[scp2.size()] = '\0'; // don't forget the terminating 0
+  // scp to monitor@l0padme3
+  system(writable2);
+  
 
 }

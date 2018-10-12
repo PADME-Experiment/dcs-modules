@@ -1,33 +1,51 @@
-JSON response of the NIM module for HV SiPM
+Response of the NIM module for HV SiPM
 
+the DrvHVSipm  module reads for each nim controller addressed in DHCP both the brdcfg,cgx and the brdusr.cgx data  (see the 
+json_hvsipm.txt file in this documentations for more details) and reports all relevant vaues for each controller in a different file.
 
- http://192.168.62.50/brdcfg.cgx    -- board configuration
+All values are written and updated about every 30 secs in the above form (separator is always ; character)
+in the file padme-dcs/data/HVSiPM_ipnumber (we have several independently monitored NIM modules)
 
-example json return string :
-{"id":"","ipAdr":"192.168.0.100","macAdr":"62:A4:17:80:FF:0D",
-"name":"PADME-NIM","sn":"FG001","hwVer":"1.0","swVer":"1.0.168"}
+The first data line reports the nim controller parameters :
 
+1) Timestamp CET of the l0padme1 call			[Timestamp]
+2) Module identifier					[text]
+3) Serial number					[text]
+4) H/W version						[text]
+5) S/W version						[text]
+6) IP number - original number written by Corradi       [text]
+7) coded MAC address	       	       	  		[text]
 
- http://192.168.62.50/brdusr.cgx   -- channels status
+Then per each of the 16 channels being monitored we have :
 
- a unique (long) json string with, for each channel repeated for the number of enabled channels,
-the relevant info for each channel :
+1) Channel id [0-15] 		       		    	 [decimal]
+2) Channel number [1-16					 [decimal]
+3) Card Status  [1=OK]					 [decimal]
+4) HV requested 					 [float]
+5) HV read						 [float]
+6) card tenperature [C]					 [float]
+7) SiPM current [microAmp]				 [float]
+8) SiPM temperature [C]					 [float]
+9) error Status	    					 [decimal]
+10) error count 					 [decimal]
+11) last error code 					 [decimal]
 
-[{"id":"","ch":1,"cardSts":1,"hvReq":62.0,"hvLvl":61.6,"cardTemp":33.58,"apdCurrent":0,"apdTemp":31.2,"cardSsupplyV":4975.3,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":2,"cardSts":1,"hvReq":62.0,"hvLvl":62.1,"cardTemp":32.34,"apdCurrent":0,"apdTemp":31.4,"cardSsupplyV":4973.1,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":3,"cardSts":1,"hvReq":62.0,"hvLvl":62.0,"cardTemp":31.47,"apdCurrent":0,"apdTemp":31.9,"cardSsupplyV":4972.9,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":4,"cardSts":1,"hvReq":62.0,"hvLvl":61.9,"cardTemp":32.86,"apdCurrent":0,"apdTemp":31.9,"cardSsupplyV":4974.6,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":5,"cardSts":1,"hvReq":61.2,"hvLvl":61.0,"cardTemp":33.70,"apdCurrent":0,"apdTemp":31.1,"cardSsupplyV":4961.5,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":6,"cardSts":1,"hvReq":62.0,"hvLvl":62.1,"cardTemp":33.31,"apdCurrent":0,"apdTemp":31.9,"cardSsupplyV":4963.3,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":7,"cardSts":1,"hvReq":62.0,"hvLvl":62.0,"cardTemp":32.32,"apdCurrent":0,"apdTemp":31.9,"cardSsupplyV":4964.5,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":8,"cardSts":1,"hvReq":62.0,"hvLvl":61.6,"cardTemp":33.35,"apdCurrent":0,"apdTemp":32.0,"cardSsupplyV":4963.6,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":9,"cardSts":1,"hvReq":62.0,"hvLvl":62.8,"cardTemp":33.05,"apdCurrent":0,"apdTemp":30.7,"cardSsupplyV":4985.5,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":10,"cardSts":1,"hvReq":62.0,"hvLvl":61.9,"cardTemp":32.64,"apdCurrent":0,"apdTemp":31.7,"cardSsupplyV":4981.7,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":11,"cardSts":1,"hvReq":62.0,"hvLvl":61.9,"cardTemp":33.22,"apdCurrent":0,"apdTemp":31.5,"cardSsupplyV":4981.7,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":12,"cardSts":1,"hvReq":62.0,"hvLvl":62.3,"cardTemp":32.19,"apdCurrent":0,"apdTemp":31.8,"cardSsupplyV":4981.6,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":13,"cardSts":1,"hvReq":62.0,"hvLvl":62.2,"cardTemp":32.20,"apdCurrent":0,"apdTemp":31.5,"cardSsupplyV":5015.8,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":14,"cardSts":1,"hvReq":62.0,"hvLvl":62.2,"cardTemp":32.33,"apdCurrent":0,"apdTemp":31.1,"cardSsupplyV":5014.5,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":15,"cardSts":1,"hvReq":62.0,"hvLvl":62.5,"cardTemp":33.02,"apdCurrent":0,"apdTemp":31.5,"cardSsupplyV":5011.0,"errSts":0,"errCnt":0,"lastErr":"Ok"},
-{"id":"","ch":16,"cardSts":1,"hvReq":62.0,"hvLvl":62.1,"cardTemp":32.86,"apdCurrent":0,"apdTemp":31.5,"cardSsupplyV":5016.1,"errSts":0,"errCnt":0,"lastErr":"Ok"}]
+example :
 
-
+Wed Oct 10 13:22:56 2018;"PADME-NIM";"FG001";"1.0";"1.0.168";"192.168.0.107";"06:01:08:50:01:18";16 
+   0;   1;   1;57.00;57.00;41.84; 0.00;40.00;    0;    0;    0 
+   1;   2;   1;57.00;57.00;43.09; 0.00;40.10;    0;    0;    0 
+   2;   3;   1;57.20;57.20;43.13; 0.00;39.80;    0;    0;    0 
+   3;   4;   1;57.10;57.10;43.58; 0.00;40.00;    0;    0;    0 
+   4;   5;   1;57.40;57.40;43.92; 0.00;40.10;    0;    0;    0 
+   5;   6;   1;57.50;57.40;42.48; 0.00;40.50;    0;    0;    0 
+   6;   7;   1;57.50;57.50;43.24; 0.00;40.30;    0;    0;    0 
+   7;   8;   1;57.40;57.40;43.11; 0.00;41.10;    0;    0;    0 
+   8;   9;   1;57.50;57.50;45.41; 1.00;40.40;    0;    0;    0 
+   9;  10;   1;57.70;57.60;43.24; 0.00;40.20;    0;    0;    0 
+  10;  11;   1;57.60;57.60;43.56; 0.00;40.30;    0;    0;    0 
+  11;  12;   1;57.70;57.70;43.00; 0.00;40.70;    0;    0;    0 
+  12;  13;   1;57.60;57.60;44.14; 0.00;41.70;    0;    0;    0 
+  13;  14;   1;57.50;57.40;46.02; 0.00;42.00;    0;    0;    0 
+  14;  15;   1;57.30;57.30;43.22; 0.00;41.30;    0;    0;    0 
+  15;  16;   1;57.20;57.10;44.05; 0.00;40.90;    0;    0;    0 

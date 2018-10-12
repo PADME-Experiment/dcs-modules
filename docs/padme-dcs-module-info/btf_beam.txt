@@ -1,62 +1,68 @@
-BTF-DAQ data specification
+BTFDATA data specification
 
-The BTF-DAQ is a dynamic composition of different modules, each one of those is run-time switchable on and off
-Here is a standard configuration, with some modules in a VME crate, other in NIM crate and again as standalone:
+Luca Foggetta has prepared 2 keys for the data relevant for PADME data taking onto the on the memcached server 192.168.198.164.
+The 2 keys are :
+VUG_PADME
+BTFDATA_PADME
 
-Delay Programmable Unit
-Scaler
-Silicon Microstrip chamber
-Peak Detector
-QDC
-TDC
+Follow the instructions from Luca :
 
-The server which houses the memcached server servicing the information directly from BTF DAQ is plbtfhactr001.lnf.infn.it
-and the key to be called is DAQ_BTF.
+Each one has more field, comma separated, in ASCII char human readable format, having this structure (one item in sequence):
+1) copy of memcached key name in uppercase
+2) timestamp from 12:00AM, 1st Jan 1904, in second.usecond format
+3) a logic ASCII bool (0,1): if zero the producer machine work correctly, if one the data are not useful
+4) producer machine data, comma separated
 
+-----------------------------------------------------------------
 
-Here a sample of one line in output from BTF DAQ
-This example datastream has: - SINGLE event mode: one event(ok trigger) per buffer - only one running board (QDC2)
+For VUG_PADME, the 4) machine data are  :
+    a,sx.xxxxEsxx<CR><LF><CR><LF>
 
-Here an example row of the datastream (\n unix terminated): 1 73 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 16375 8471 0 10 18775 19964 42 314 134 1065 106 816 106 833 151 1180 134 1034 145 1168 30 251 131 1038 134 1076 159 1231 154 1232 146 1118 164 1262 141 1118 149 1182 0 -1697888 165123 1 1 1
-
-
-SINGLE event mode
-
-Data stream Header + Word number per event + Active DAQ Boards List
-1 73 0 0 0 1 0 0 0 0
-The first data in the data stream row is the "event per row" and it is the header of the each row in the data stream, recording the number of event acquired per DAQ Cycle (row)
-
-event per row (1) + event number of data word space separated (73)+ agile silicon on/off (1/0) + peak sensitive on/off (1/0) + qdc1 on/off (1/0) + qdc2 on/off (1/0) + tdc1 on/off (1/0) + qdc3 on/off (1/0) + tdc2 on/off (1/0) + spare on/off (1/0)
-
-Default scaler data
-0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 16375 8471 0 10 18775 19964
-These 32 words belonging to the BTF scaler and they are included in the datastream as default:
-First word is scaler channel1 (data=0) (counting is reset on DAQ restart every time)
-the last is scaler channel 32 (data=19964) (counting is reset on DAQ restart every time)
-word 31 and 32 are, respectively, trigger acquired and the overall trigger received
-
-DAQ Active Board data
-42 314 134 1065 106 816 106 833 151 1180 134 1034 145 1168 30 251 131 1038 134 1076 159 1231 154 1232 146 1118 164 1262 141 1118 149 1182
-These are 32 word belonging to the V965 16 channels (it is, in this example, the only active element in addition to the scaler: 0 0 0 1 0 0 0 0).
-BTF version of the V965 has 16 charge coupled channels (chXX-hirange chXX-lowrange): for each couple the range is 800pC (first data channel on the stream) and 100pC (the other one). These data are not pedestal subtracted and V965 channel counting starts from channel0.
-
-What more specifically concerns PADME DCS is the following, in particular the last 4 words: (last word of Timing 
-data and all 3 words of Data stream Tail)
+a = Description Status,
+0 –>  Measurement data okay
+1 –>  Underrange
+2 –>  Overrange
+3 –>  Sensor error
+4 –>  Sensor off (IKR, PKR, IMR, PBR)
+5 –>  No sensor (output: 5,2.0000E-2 [hPa])
+6 –> Identification error
 
 
-Timing data
-0 -1697888 165123
-are BTF machine and DAFNE status
-
-0 every time,
--1697888 ms clock count of BTFDAQ processor,
-165123 is the local time (GMT +1) in the format HHMMSS
+sx.xxxxEsxx = Measurement value
+ [in current pressure unit]
+(s = sign)
+Values always in exponential format
 
 
-Data stream Tail
-1 1 1
+---------------------------------
 
-1 1 1 is, respectively:
-electron/positron LINAC phase (0/1)
-modulator on/off(1/0)
-gun on/off(1/0)
+For BTFDATA_PADME, the 4) machine data are:
+a,b,c,d,e,f,g,h<CR><LF><CR><LF>
+
+a=logic ASCII bool (0,1)= DHPTB101 ok and on
+b=logic ASCII bool (0,1)= BTF particle type 1=positron, 0=electron
+c=logic ASCII bool (0,1)= DHSTB001 ok (magnet on and current set reached)
+d=logic ASCII bool (0,1)= DHSTB002 ok (magnet on and current set reached)
+e=logic ASCII bool (0,1)= DHRTB102 ( = Padme magnet) ok (magnet on and current set reached)
+f=floating point ASCII value = DHSTB001 steering equivalent electron energy (ideal particle) [MeV]
+g=floating point ASCII value = DHSTB002 steering equivalent electron energy (ideal particle) [MeV]
+h=floating point ASCII value = DHRTB102 (=Padme magnet) current set
+
+-------------------------------------------------------------------------------------------------------
+
+The DrvBTFBeam module reads from the memcached server these values, transforms the Labview timestamp into local CET timestamp
+and sends data in the following form (separator is always ; character)
+
+BFTDATA      --> values are written and updated every 2 sec  into the padme-dcs/data/BTFDATA_Padme   file
+Timestamp(CET) [string] ; producer status [decimal] ; DHPTB101 status [decimal] ; BTF particle type [decimal] ; DSHTB001 status [decimal] ;
+ DHSTB02 status [decimal] ; Padme magnet status [decimal]; energy from DHSTB001 [float] ; energy from DHSTB002 [decimal] ; Padme magnet current in A [decimal]
+
+example:
+Wed Oct 10 12:19:48 2018;0;1;1;1;1;1;545.15;542.33;283.00 
+
+ 
+VUGDATA      --> values are written and updated every 2 sec  into the padme-dcs/data/VUG_Padme   file
+Timestamp(CET) [string] ;  producer status [decimal] ;  readout device status [decimal] ; pressure in mbar [scientific notation]
+
+example:
+Wed Oct 10 12:23:53 2018;0;0;+7.8100E-07

@@ -2,8 +2,7 @@ The readout of the BTF ambient parameters come from a COMET T7510 unit :
 Intelligent barometric pressure, humidity and temperature probe with Ethernet interface
 
 The object is located inside the BTF hall and has an IP address
-http://192.168.189.180/
-where its http interface responds.
+http://192.168.189.180/ where its http interface responds.
 
 Upon interrogation of
  http://192.168.189.180/epocasi.html
@@ -17,5 +16,8 @@ from which you can calculate the dew point evenctually
 The padme-dcs module DrvBTFAmb gets these numbers from the above html and 
 converts them to the appropriate double values with the timestamp of when
 it was called by l0padme1.
+All fields are separated by ; character
 
-
+The data are then written inside the file padme-dcs/data/BTFamb
+example:
+Wed Oct 10 12:03:33 2018;23.500000;52.099998;996.799988 

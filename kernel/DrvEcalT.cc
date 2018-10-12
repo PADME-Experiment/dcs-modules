@@ -79,6 +79,7 @@ DrvEcalT::ComInit()
     printf("Error: Unable to create socket (%i)...\n",errno);
     perror("sockets"); // Print error message based on errno
     exit(1);
+    DrvEcalT_except::EcalTRetStatus(MySocket,1,"IP = "+fIPAddress+" ");
   }
 	
   // Establish TCP connection
@@ -91,7 +92,7 @@ DrvEcalT::ComInit()
 	     sizeof(struct sockaddr_in))==-1) {
     printf("Error: Unable to establish connection to socket (%i)...\n",
 	   errno);
-    DrvEcalT_except::EcalTRetStatus(MySocket,3,"IP = "+fIPAddress+" ");
+    DrvEcalT_except::EcalTRetStatus(MySocket,6,"IP = "+fIPAddress+" ");
 
     // perror("sockets"); // Print error message based on errno
     // exit(1);
@@ -186,7 +187,9 @@ DrvEcalT::OnCycleLocal()
 		      0))==-1) {
     printf("Error: Unable to create socket (%i)...\n",errno);
     perror("sockets"); // Print error message based on errno
-    exit(1);
+    DrvEcalT_except::EcalTRetStatus(MySocket,1,"IP = "+fIPAddress+" ");
+    // exit(1);
+    return;
   }
 	
   // Establish TCP connection
@@ -199,10 +202,11 @@ DrvEcalT::OnCycleLocal()
 	     sizeof(struct sockaddr_in))==-1) {
     printf("Error: Unable to establish connection to socket (%i)...\n",
 	   errno);
-    DrvEcalT_except::EcalTRetStatus(MySocket,3,"IP = "+fIPAddress+" ");
+    DrvEcalT_except::EcalTRetStatus(MySocket,6,"IP = "+fIPAddress+" ");
 
     //perror("sockets"); // Print error message based on errno
-    exit(1);
+    // exit(1);
+    return;
   }
 
   printf(" OnCycleLocal - Connected to server %s \n",address);
@@ -225,7 +229,8 @@ DrvEcalT::OnCycleLocal()
       DrvEcalT_except::EcalTRetStatus(MySocket,2,"IP = "+fIPAddress+" ");
       close(MySocket);
       // exit(1);
-  }
+      return;
+}
 
   //printf(" Sockets buffer = %s \n",SocketsBuffer);
   sscanf(SocketsBuffer,"%u",&ControlPort);
@@ -238,6 +243,7 @@ DrvEcalT::OnCycleLocal()
        DrvEcalT_except::EcalTRetStatus(MySocket,3,"IP= "+fIPAddress+" ");
        //perror("sockets"); // Print error message based on errno
        close(MySocket);
+       return;
        // exit(1);
   }
 
@@ -256,6 +262,7 @@ DrvEcalT::OnCycleLocal()
     // perror("sockets"); // Print error message based on errno
     close(MySocket);
     // exit(1);
+    return;
   }
 
   //printf(" doing a device clear \n");
@@ -310,6 +317,7 @@ DrvEcalT::OnCycleLocal()
       printf("Warning: No response from instrument (control port).\n");
       DrvEcalT_except::EcalTRetStatus(MySocket,2,"IP= "+fIPAddress+" ");
       // exit(1);
+      return;
   } else {
     // printf(" Read socket buffer length =%d \n",iret);
     // printf(" SCAN DATA read = %s \n",SocketsBuffer);
@@ -329,58 +337,77 @@ DrvEcalT::OnCycleLocal()
     //printf(" %d - %s \n",ntoken,tok);
     ntoken++;
   }
-  
-  //printf(" tokens found = %d \n",ntoken);
-  int nreads=ntoken/9;
-  int ik;
-  char *temp1;
-  char *temp2;
-  char *temp3;
-  char tempc[15];
-  double tempf[50];
-  int mydates[3];
-  int mytimes[2];
-  double mytimes1;
-  int numchan[50];
-  int errflag;
-  char mystamp[25];
-  for (ik=0;ik<nreads;ik++) {
-    int istart=ik*9;
-    //printf(" ik=%d istart=%d \n",ik,istart);
-    temp1="";
-    temp1=token[istart];
-    //int length=strlen(temp);
-    //printf(" length =%d \n",length);
-    //temp[length]='\0';
-    strncpy(tempc,temp1,15);
-    //printf(" tempc = %s \n",tempc);
-    tempf[ik]=atof(tempc);
-    // now decode time
-    mydates[0]=atoi(token[istart+3]);
-    mydates[1]=atoi(token[istart+2]);
-    mydates[2]=atoi(token[istart+1]);
-    mytimes[0]=atoi(token[istart+4]);
-    mytimes[1]=atoi(token[istart+5]);
-    mytimes1=atof(token[istart+6]);
+
+  if(ntoken>8) {
+ 
+   // and write to file
+   FILE * pFile;
+   // int n;
+   std::string filename1="data/EcalT";
+   pFile = fopen (filename1.c_str(),"w");
+
+   //printf(" tokens found = %d \n",ntoken);
+   int nreads=ntoken/9;
+   int ik;
+   for (ik=0;ik<nreads;ik++) {
+     char *temp1;
+     char *temp2;
+     char *temp3;
+     char tempc[15];
+     double tempf[50];
+     int mydates[3];
+     int mytimes[2];
+     double mytimes1;
+     int numchan[50];
+     int errflag;
+     char mystamp[25];
+     int istart=ik*9;
+      //printf(" ik=%d istart=%d \n",ik,istart);
+      temp1="";
+      temp1=token[istart];
+      //int length=strlen(temp);
+      //printf(" length =%d \n",length);
+      //temp[length]='\0';
+      strncpy(tempc,temp1,15);
+      //printf(" tempc = %s \n",tempc);
+      tempf[ik]=atof(tempc);
+      // now decode time
+      mydates[0]=atoi(token[istart+3]);
+      mydates[1]=atoi(token[istart+2]);
+      mydates[2]=atoi(token[istart+1]);
+      mytimes[0]=atoi(token[istart+4]);
+      mytimes[1]=atoi(token[istart+5]);
+      mytimes1=atof(token[istart+6]);
     
-    temp2="";
-    temp2=token[istart+7];
-    // int length=strlen(temp2);
-    // printf(" length =%d \n",length);
-    //printf(" temp2 = %s \n",temp2);
-    numchan[ik]=atoi(temp2);
+      temp2="";
+      temp2=token[istart+7];
+      // int length=strlen(temp2);
+      // printf(" length =%d \n",length);
+      //printf(" temp2 = %s \n",temp2);
+      numchan[ik]=atoi(temp2);
     
-    temp3="";
-    temp3=token[istart+8];
-    errflag=atoi(temp3);
-    // printf("\n");
-    printf(" read %d - channel %d - T = %f - err = %d \n",ik,numchan[ik],tempf[ik],errflag);
-    // printf(" time = %d-%d-%d %d:%d:%f \n",mydates[0],mydates[1],mydates[2],mytimes[0],mytimes[1],mytimes1);
-    sprintf(mystamp,"%d-%d-%d %d:%d:%f",mydates[0],mydates[1],mydates[2],mytimes[0],mytimes[1],mytimes1);
-    printf(" timestamp = %s \n",mystamp);
-    // printf("\n");
+      temp3="";
+      temp3=token[istart+8];
+      errflag=atoi(temp3);
+      // printf("\n");
+      // printf(" time = %d-%d-%d %d:%d:%f \n",mydates[0],mydates[1],mydates[2],mytimes[0],mytimes[1],mytimes1);
+      sprintf(mystamp,"%d-%d-%d %d:%d:%f",mydates[0],mydates[1],mydates[2],mytimes[0],mytimes[1],mytimes1);
+      printf(" timestamp = %s \n",mystamp);
+      printf(" read %d - channel %d - T = %f - err = %d \n",ik,numchan[ik],tempf[ik],errflag);
+
+        
+      // write values to file
+      fprintf(pFile,"%.24s;%d;%d;%f;%d \n",mystamp,ik,numchan[ik],tempf[ik],errflag);
+
+      // printf("\n");
+
+   }
+
+   // and close written file
+   fclose(pFile);
+   
   }
-  
+    
   
   // and close sockets after everything done
   close(MyControlPort);
@@ -453,9 +480,9 @@ void DrvEcalT::DeviceClear(int MySocket,char *buffer)
 	WriteString(MySocket,"DCL\n");
 	if(ReadString(MySocket,buffer)==0)
 		return;
-	if(strcmp(buffer,"DCL\n")==0)
-		printf("DCL\\n received back from instrument...\n");
-	else {
+	if(strcmp(buffer,"DCL\n")==0) {
+	  // printf("DCL\\n received back from instrument...\n");
+	} else {
 		printf("Warning: DCL response: %s\n",buffer);
 	}
 	return;

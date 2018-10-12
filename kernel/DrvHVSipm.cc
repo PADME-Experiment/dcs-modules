@@ -121,6 +121,7 @@ DrvHVSipm::OnCycleLocal()
   char *tok0;
   char *tok1;
   char *tok;
+  // string tok;
   char *tokens0[500];
   char *tokens1[500];
   int portNum = 11211; // port number
@@ -150,26 +151,39 @@ DrvHVSipm::OnCycleLocal()
   	int ichan =-1;
 	jjj++;
 
-  	// first sleep 2 sec to be sure readout timing is OK
-	// usleep(2000000);
+  	// first sleep 20 sec to be sure readout timing is OK
+	usleep(20000000);
 
 	char * serv = new char[fIPAddress.size() + 1];
 	std::copy(fIPAddress.begin(), fIPAddress.end(), serv);
 	serv[fIPAddress.size()] = '\0'; // don't forget the terminating 0
 
-	string wget_str="wget http://";
+	string wget="wget -O ";
+	string http=" http://";
 	string brdcfg="/brdcfg.cgx";
 	string brdusr="/brdusr.cgx";
 	string command_cfg;
 	string command_usr;
 
+	string filename_cfg="brdcfg.cgx";
+	filename_cfg+=".";
+	filename_cfg+=serv;
+	string filename_usr="brdusr.cgx";
+	filename_usr+=".";
+	filename_usr+=serv;
 
-	command_cfg+=wget_str;
+	command_cfg+=wget;
+	command_cfg+=filename_cfg;
+	command_cfg+=http;
 	command_cfg+=serv;
-	command_usr+=wget_str;
-	command_usr+=serv;
 	command_cfg+=brdcfg;
+
+	command_usr+=wget;
+	command_usr+=filename_usr;
+	command_usr+=http;
+	command_usr+=serv;
 	command_usr+=brdusr;
+
 	cout << " command_cfg " << command_cfg << endl; 
 	cout << " command_usr " << command_usr << endl; 
 
@@ -199,7 +213,7 @@ DrvHVSipm::OnCycleLocal()
 	
 	// get json string from file
 	// Open file for reading 
-	fp = fopen("brdcfg.cgx", "r");
+	fp = fopen(filename_cfg.c_str(), "r");
 	
 	if(fp) {
 	  // printf(" Opened file brdcfg.cgx \n");
@@ -217,7 +231,9 @@ DrvHVSipm::OnCycleLocal()
 	  fclose(fp);
 	}
 	// and remove the file
-	system("rm brdcfg.cgx");
+	string command1="rm ";
+	command1+=filename_cfg;
+	system(command1.c_str());
 	
 	
 	// get json string from call to nim module
@@ -243,8 +259,16 @@ DrvHVSipm::OnCycleLocal()
 	  while( (tok0=strsep(&js0,"{[,]}")) != NULL) {
 	    if(strcmp(tok0,"") != 0 ) {
 	      // printf(" %d token =  %s \n",tokcount,tok0);
+	      // separator is :
 	      while( (tok=strsep(&tok0,":")) != NULL) {
 		// printf( " %d tok0= %s \n",tokcount0,tok);
+		/*
+		//and strip quotes in tok
+		// substitute quotes at start and end
+		int iiok = strlen(tok);
+		tok[0]="";
+		tok[iiok]="";
+		*/
 		tokens0[tokcount0]=tok;
 		tokcount0++;
 	      }
@@ -275,6 +299,7 @@ DrvHVSipm::OnCycleLocal()
 				  "\"sn\"","\"hwVer\"", "\"swVer\""};
 	
 	char *macadr0[17];
+	char *myipaddr;
 	char *name;
 	char *snum;
 	char *hwver;
@@ -291,6 +316,10 @@ DrvHVSipm::OnCycleLocal()
 	int itok;
 	for (itok=0;itok<tokcount0;itok++) {
 	  // printf(" token %d = %s \n",itok,tokens[itok]);
+	  if(strcmp(tokens0[itok],options0[1])  ==0 ) {
+	    myipaddr=tokens0[itok+1];
+	    itok++;
+	  }
 	  if(strcmp(tokens0[itok],options0[2])  ==0 ) {
 	    mac1=tokens0[itok+1];
 	    mac2=tokens0[itok+2];
@@ -325,7 +354,7 @@ DrvHVSipm::OnCycleLocal()
 
 	// get json string from file
 	// Open file for reading 
-	fp = fopen("brdusr.cgx", "r");
+	fp = fopen(filename_usr.c_str(), "r");
 	
 	if(fp) {
 	  // printf(" Opened file brdusr.cgx \n");
@@ -344,7 +373,9 @@ DrvHVSipm::OnCycleLocal()
 	  fclose(fp);
 	}
 	// and remove the file
-	system("rm brdusr.cgx");
+	string command2="rm ";
+	command2+=filename_usr;
+	system(command2.c_str());
 
 	// get json string from call to nim module
 	lenbuf=strlen(buf1);
@@ -463,52 +494,39 @@ DrvHVSipm::OnCycleLocal()
 	  int ik;
 	  char string[60];
 
-	  /*
-	  // initialize buffer1 with timestring
-	  int n2=sprintf(buffer1,"%.25s;",timestring);
-	  // and add string0 to buffer1
-	  strcat(buffer1,string0);	  
-	  printf(" buffer1 = %s  \n",buffer1);
-	  //buffer1[0]='\0';
-	  */
 
+	  // comment printout
+	  /*
 	  printf(" Loop = %d - Timestamp = %25s  \n",jjj,timestring);
-	  printf(" %.11s; %.7s; %.7s; %.9s; %.3s:%.3s:%.3s:%.3s:%.3s:%.3s;",name,snum,hwver,swver,mac1,mac2,mac3,mac4,mac5,mac6);
+	  printf(" %.11s; %.7s; %.7s; %.9s; %.15s ;%.3s:%.3s:%.3s:%.3s:%.3s:%.3s;",name,snum,hwver,swver,myipaddr,mac1,mac2,mac3,mac4,mac5,mac6);
 	  printf("\n id  chan status hvset  hvlvl  cardT  sipmI  sipmT errSt  errcnt lasterr\n");
 	  for (ik=0;ik<ichan;ik++) {
 	    printf("%4d %4d %4d   %5.2f  %5.2f  %5.2f  %5.2f  %5.2f %5d %5d  %5d \n",
 		   idval[ik],chanval[ik],cardsts[ik],hvreq[ik],hvlvl[ik],cardtemp[ik],
 		   sipmcurr[ik],sipmtemp[ik],errsts[ik],errcnt[ik],lasterr[ik]);
-	  
-
-	    /*
-	    // set the string for memcache
-	    sprintf(string,"%3d;%3d;%3d;%5.2f;%5.2f;%5.2f;%5.2f;%5.2f;%4d;%4d;%4d",
-		    idval[ik],chanval[ik],cardsts[ik],hvreq[ik],hvlvl[ik],cardtemp[ik],
-		    sipmcurr[ik],sipmtemp[ik],errsts[ik],errcnt[ik],lasterr[ik]);
-	    // and add it to buffer1
-	    strcat(buffer1,string);
-	    */
 	  }
 	  printf(" \n\n");
 	  
-	  /*     Drop memcache part
-	  
-	  // check final string
-	  int lenbuf1=strlen(buffer1);
-	  printf(" memcache buffer lenght = %d \n",lenbuf1);
-	  // printf(" buffer 1 = %s \n",buffer1);
-	  
-	  // and send buffer to memcache server
-	  bool set_value=memcached_set(memc,key,strlen(key),buffer1,strlen(buffer1),999999,0);
-	  printf("set memcache  %s!\n", memcached_strerror(memc, rc));
-	  
-	  
-	  //and read again the key
-	  retrieved_value = memcached_get(memc, key, strlen(key), &value_length, &flags, &rc);
-	  printf(" get memcache  %s!\n", memcached_strerror(memc, rc));
-	  
 	  */
+
+	 
+
+	  // and output to file
+	  FILE * pFile;
+	  std::string filename="data/HVSiPM_";
+	  filename+=fIPAddress;
+
+	  pFile = fopen (filename.c_str(),"w");
+
+	  fprintf(pFile,"%.24s;%.11s;%.7s;%.7s;%.9s;%.15s;%.3s:%.3s:%.3s:%.3s:%.3s:%.3s;%d \n",timestring,name,snum,hwver,swver,myipaddr,mac1,mac2,mac3,mac4,mac5,mac6,ichan);
+	  for (ik=0;ik<ichan;ik++) {
+	    fprintf(pFile,"%4d;%4d;%4d;%5.2f;%5.2f;%5.2f;%5.2f;%5.2f;%5d;%5d;%5d \n",
+		   idval[ik],chanval[ik],cardsts[ik],hvreq[ik],hvlvl[ik],cardtemp[ik],
+		   sipmcurr[ik],sipmtemp[ik],errsts[ik],errcnt[ik],lasterr[ik]);
+	  }
+
+	  fclose(pFile);
+
 	  
 	} else {
 	  //printf( " lenbuf = 0 - exiting \n");
