@@ -1,9 +1,12 @@
 #include "kernel/DeviceManager.h"   //in c file
 #include "DrvCaenHV.h"
+//#include "DrvCaenCosmics.h"
+#include "DrvRasp2.h"
 #include "DrvCaenA7030.h"
 #include "DrvCaenSY4527.h"
 #include "DrvPadmeAmb.h"
-#include "DrvDiamondHV.h"
+//#include "DrvDiamondHV.h"
+#include "DrvMimosaT.h"
 #include "DrvHVSipm.h"
 #include "DrvBTFAmb.h"
 #include "DrvBTFBeam.h"
@@ -122,19 +125,36 @@ DeviceManager::Configure(const std::string& cfg)
     const std::string& devlble=config[nod_i]["Label"     ].as<std::string>();
     const std::string& parlble=config[nod_i]["ParentLabel"].as<std::string>();
     INFO(devlble);
+
     if(drvtype=="CAEN_HVCrate"){
       auto caen=std::make_shared<DrvCaenHV>(devlble,this); //potential problem
       AddDevice(devlble,caen);
       caen->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
-      caen->SetUsername ( config[nod_i]["Args"]["User"  ].as<std::string>());
-      caen->SetPassword ( config[nod_i]["Args"]["Pass"  ].as<std::string>());
+      caen->SetUsername ( config[nod_i]["Args"]["User"].as<std::string>());
+      caen->SetPassword ( config[nod_i]["Args"]["Pass"].as<std::string>());
+      caen->SetAlarm ( config[nod_i]["Args"]["Alarm"].as<std::string>());
       auto updmap=config[nod_i]["Update"];
       for(auto it=updmap.begin();it!=updmap.end();++it){
         caen->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
         INFO(it->first.as<std::string>());
         INFO(it->second.as<std::string>());
       }
-      // add f.f. 
+    // add f.f.
+      /*
+    } else if(drvtype=="CAEN_Cosmics"){
+      auto cosmics=std::make_shared<DrvCaenCosmics>(devlble,this); //potential problem
+      AddDevice(devlble,cosmics);
+      cosmics->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
+      cosmics->SetUsername ( config[nod_i]["Args"]["User"  ].as<std::string>());
+      cosmics->SetPassword ( config[nod_i]["Args"]["Pass"  ].as<std::string>());
+      auto updmap=config[nod_i]["Update"];
+      for(auto it=updmap.begin();it!=updmap.end();++it){
+        cosmics->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        INFO(it->first.as<std::string>());
+        INFO(it->second.as<std::string>());
+      }
+      */
+    // add f.f. 
     } else if(drvtype=="BTF_amb"){
       auto btfamb=std::make_shared<DrvBTFAmb>(devlble,this); //potential problem
       AddDevice(devlble,btfamb);
@@ -146,15 +166,28 @@ DeviceManager::Configure(const std::string& cfg)
         INFO(it->first.as<std::string>());
         INFO(it->second.as<std::string>());
       }
-      // add f.f
-    } else if(drvtype=="DiamondHV"){
-      auto diamondhv=std::make_shared<DrvPadmeDiamond>(devlble,this); //potential problem
-      AddDevice(devlble,diamondhv);
-      diamondhv->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
-      diamondhv->SetPort( config[nod_i]["Args"]["Port"].as<std::string>());
+      /*
+      // add f.f. 
+    } else if(drvtype=="Rasp2"){
+      auto rasp2=std::make_shared<DrvRasp2>(devlble,this); //potential problem
+      AddDevice(devlble,rasp2);
+      rasp2->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
       auto updmap=config[nod_i]["Update"];
       for(auto it=updmap.begin();it!=updmap.end();++it){
-        diamondhv->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        rasp2->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        INFO(it->first.as<std::string>());
+        INFO(it->second.as<std::string>());
+      }
+      */
+      // add f.f
+    } else if(drvtype=="MimosaT"){
+      auto mimosat=std::make_shared<DrvMimosaT>(devlble,this); //potential problem
+      AddDevice(devlble,mimosat);
+      mimosat->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
+      //mimosat->SetPort( config[nod_i]["Args"]["Port"].as<std::string>());
+      auto updmap=config[nod_i]["Update"];
+      for(auto it=updmap.begin();it!=updmap.end();++it){
+        mimosat->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
         INFO(it->first.as<std::string>());
         INFO(it->second.as<std::string>());
       }
@@ -197,6 +230,7 @@ DeviceManager::Configure(const std::string& cfg)
       auto hvsipm=std::make_shared<DrvHVSipm>(devlble,this); //potential problem
       AddDevice(devlble,hvsipm);
       hvsipm->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
+      // hvsipm->SetAlarm( config[nod_i]["Args"]["Alarm"  ].as<std::string>());
       //hvsipm->SetPort( config[nod_i]["Args"]["Port"].as<std::string>());
       auto updmap=config[nod_i]["Update"];
       for(auto it=updmap.begin();it!=updmap.end();++it){
@@ -229,15 +263,20 @@ DeviceManager::Configure(const std::string& cfg)
         INFO(it->first.as<std::string>());
         INFO(it->second.as<std::string>());
       }
+      /*
     }else if(drvtype=="CAEN_SY4527"){
-      auto caen=std::make_shared<DrvCaenSY4527>(devlble,Get(parlble).get());
-      Get(parlble)->AddDevice(devlble,caen);
+      auto caen4527=std::make_shared<DrvCaenSY4527>(devlble,this);
+      AddDevice(devlble,caen4527);
+      caen4527->SetIPAddress( config[nod_i]["Args"]["IPAddr"].as<std::string>());
+      caen4527->SetUsername ( config[nod_i]["Args"]["User"  ].as<std::string>());
+      caen4527->SetPassword ( config[nod_i]["Args"]["Pass"  ].as<std::string>());
       auto updmap=config[nod_i]["Update"];
       for(auto it=updmap.begin();it!=updmap.end();++it){
-        caen->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
+        caen4527->SetUpdate(it->first.as<std::string>(),it->second.as<unsigned int>());
         INFO(it->first.as<std::string>());
         INFO(it->second.as<std::string>());
       }
+      */
     }else if(drvtype=="CAEN_A7030N"){
       auto board=std::make_shared<DrvCaenA7030N>(devlble,Get(parlble).get());
       Get(parlble)->AddDevice(devlble,board);

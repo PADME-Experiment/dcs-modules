@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <time.h>       /* time_t, struct tm, difftime, time, mktime */
-#include <libmemcached/memcached.h>
+//#include <libmemcached/memcached.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <sstream>
@@ -92,23 +92,6 @@ void
 DrvBTFAmb::DebugDump()
 {
   
-  std::string fTemp  ("23.0");
-  std::string fRHumi ("45.0");
-  std::string timestamp;
-
-
-  time_t rawtime;
-  struct tm * timeinfo;
-
-  time ( &rawtime );
-  timeinfo = localtime ( &rawtime );
-  //printf ( "The current date/time is: %s", asctime (timeinfo) );
-  timestamp=asctime(timeinfo);
-  
-
-  std::stringstream ss;
-  ss.str(std::string());ss.clear();ss<<"fTemperature    "<<fTemp <<" @- "<<timestamp;INFO(ss.str());
-  ss.str(std::string());ss.clear();ss<<"fRel Humidity   "<<fRHumi<<" @- "<<timestamp;INFO(ss.str());
    
 }
 
@@ -118,6 +101,7 @@ DrvBTFAmb::OnCycleLocal()
 
   string filename="file.out";
   int handle;
+  bool debug=false;
 
 
   // sleep 30 seconds between cycles
@@ -143,16 +127,22 @@ DrvBTFAmb::OnCycleLocal()
   string line;
   ifstream myfile (filename);
 
-  time_t rawtime;
+  time_t ticks;
   struct tm * timeinfo;
-  char *timestamp;
+  char timestamp[25];
 
-  time ( &rawtime );
-  timeinfo = localtime ( &rawtime );
-  //printf ( "The current date/time is: %s", asctime (timeinfo) );
-  timestamp=asctime(timeinfo);
+  // old human readable timestamp
+  // time ( &rawtime );
+  //timeinfo = localtime ( &rawtime );
+  //timestamp=asctime(timeinfo);
+
+  // new formatted timestring
+  time (&ticks);
+  timeinfo = localtime (&ticks);
+  strftime (timestamp,25,"%Y-%m-%d %T",timeinfo);
+  
   int lengthstr=strlen(timestamp);
-  //printf(" timestamp length = %d \n",lengthstr);
+  //printf(" timestamp length = %d \n",lengthstr);{
   timestamp[lengthstr]='\0';
   
   if(!myfile) {
@@ -189,29 +179,36 @@ DrvBTFAmb::OnCycleLocal()
   myfile.close();
   
   FILE * pFile;
+  FILE * pFile_app;
   // int n;
   std::string filename1="data/BTFAmb";
+  std::string filenameapp="history/BTFAmb";
   pFile = fopen (filename1.c_str(),"w");
+  pFile_app = fopen (filenameapp.c_str(),"a");
 
   printf(" BTFAmb - Starting client on %s \n",fIPAddress.c_str());  
-  printf(" command is %s \n",commandc);
-  printf("Timestamp = %s \n",timestamp);
-  // fprintf(pFile,"%.24s \n",timestamp);
- 
-  for(int ii=0;ii<3;ii++) {
-    printf(" var %d = %f \n",ii,var[ii]);
+  if(debug) {
+    printf(" command is %s \n",commandc);
+    printf("Timestamp = %s \n",timestamp);
+    // fprintf(pFile,"%.24s \n",timestamp);
+    
+    for(int ii=0;ii<3;ii++) {
+      printf(" var %d = %f \n",ii,var[ii]);
+    }
   }
 
   
   // write values to file
   fprintf(pFile," %.24s;%f;%f;%f \n",timestamp,var[0],var[1],var[2]);
   fclose(pFile);
+  fprintf(pFile_app," %.24s;%f;%f;%f \n",timestamp,var[0],var[1],var[2]);
+  fclose(pFile_app);
 
   system("rm file.out");
 
   // and send value to file
   FILE * pFile3;
-  std::string filename3="BTFAMB.txt";
+  std::string filename3="monitor/BTFAMB.txt";
   pFile3 = fopen (filename3.c_str(),"w");
 
   // write values to file
@@ -223,14 +220,16 @@ DrvBTFAmb::OnCycleLocal()
   fclose(pFile3);
 
   // and copy file to monitor@l0padme3
-  string scp2="scp -q BTFAMB.txt monitor@l0padme3:PadmeMonitor/watchdir/. ";
+  string scp2="scp -q "+filename3+" monitor@l0padme3:PadmeMonitor/watchdir/. ";
   // cout << " scp command " << scp2 << endl; 
   char * writable2 = new char[scp2.size() + 1];
   std::copy(scp2.begin(), scp2.end(), writable2);
   writable2[scp2.size()] = '\0'; // don't forget the terminating 0
   // scp to monitor@l0padme3
   system(writable2);
-
+  
+  printf(" BTFAmb - Closing client on %s \n",fIPAddress.c_str());  
+ 
   
 }
 

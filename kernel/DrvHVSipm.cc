@@ -12,6 +12,7 @@
 #include <time.h>       /* time_t, struct tm, difftime, time, mktime */
 #include <stdio.h>
 #include <string.h>
+#include <cmath>        // std::abs
 
 using namespace std;
 int jjj=0;
@@ -127,19 +128,14 @@ DrvHVSipm::OnCycleLocal()
   int portNum = 11211; // port number
   char timestring[27];
   char *string0;
-
-  #define bufSize 3000 // buffer size
-  char buffer[bufSize]; // buffer to transmit
-  char buffer1[bufSize]; // buffer to transmit
-
-  #define CHUNK 3000 /* read max 3000 bytes at a time */
+   #define CHUNK 3000 /* read max 3000 bytes at a time */
   char buf1[CHUNK];
   char buf0[CHUNK];
-  
-  size_t value_length;
-  uint32_t flags;
-  unsigned int mccount;
+  struct sockaddr_in sa;
+  char node[NI_MAXHOST];
+  struct tm * timeinfo;
 
+  bool debug=false;
 
   bool isExit=false;
 
@@ -157,8 +153,8 @@ DrvHVSipm::OnCycleLocal()
 	char * serv = new char[fIPAddress.size() + 1];
 	std::copy(fIPAddress.begin(), fIPAddress.end(), serv);
 	serv[fIPAddress.size()] = '\0'; // don't forget the terminating 0
-
-	string wget="wget -O ";
+		  
+	string wget="wget -nv -O ";
 	string http=" http://";
 	string brdcfg="/brdcfg.cgx";
 	string brdusr="/brdusr.cgx";
@@ -184,8 +180,8 @@ DrvHVSipm::OnCycleLocal()
 	command_usr+=serv;
 	command_usr+=brdusr;
 
-	cout << " command_cfg " << command_cfg << endl; 
-	cout << " command_usr " << command_usr << endl; 
+	//cout << " command_cfg " << command_cfg << endl; 
+	//cout << " command_usr " << command_usr << endl; 
 
 	char * writable1 = new char[command_cfg.size() + 1];
 	std::copy(command_cfg.begin(), command_cfg.end(), writable1);
@@ -207,8 +203,15 @@ DrvHVSipm::OnCycleLocal()
 
 	// get timestamp 
 	time_t ticks;
-	ticks = time(NULL);
-	snprintf(timestring, 25, "%.25s", ctime(&ticks));
+
+	// OLD - human readable format for timestamp
+	//ticks = time(NULL);
+	//snprintf(timestring, 25, "%.25s", ctime(&ticks));
+
+	// new formatted timestring
+	time (&ticks);
+	timeinfo = localtime (&ticks);
+	strftime (timestring,25,"%Y-%m-%d %T",timeinfo);
 
 	
 	// get json string from file
@@ -223,17 +226,21 @@ DrvHVSipm::OnCycleLocal()
 	  // fwrite(buf0, 1, nread, stdout);
 	  if (ferror(fp)) {
 	    // deal with error 
-	    fprintf(stderr, " error opening brdcfg.cgx  \n");
+	    fprintf(stderr, " error reading brdcfg.cgx  \n");
 	    DrvHVSipm_except::HVSipmRetStatus(handle,3, "IP = "+fIPAddress+" ");
 	    // printf(" error reading file \n");
 	  }
 	  // and close the file	  
 	  fclose(fp);
+	  // and remove the file
+	  string command1="rm ";
+	  command1+=filename_cfg;
+	  system(command1.c_str());
+	} else {
+	  printf("Error opening file  brdcfg.cgx \n");
+	  DrvHVSipm_except::HVSipmRetStatus(handle,3, "IP = "+fIPAddress+" ");
+	  return;
 	}
-	// and remove the file
-	string command1="rm ";
-	command1+=filename_cfg;
-	system(command1.c_str());
 	
 	
 	// get json string from call to nim module
@@ -364,18 +371,21 @@ DrvHVSipm::OnCycleLocal()
 	  // fwrite(buf1, 1, nread, stdout);
 	  if (ferror(fp)) {
 	    // deal with error 
-	    fprintf(stderr, " error opening brdusr.cgx  \n");
+	    fprintf(stderr, " error reading brdusr.cgx  \n");
 	    DrvHVSipm_except::HVSipmRetStatus(handle,3, "IP = "+fIPAddress+" ");
 	    // printf(" error reading file \n");
 	    // return 1;
 	  }
 	  // and close the file	  
 	  fclose(fp);
+	  // and remove the file
+	  string command2="rm ";
+	  command2+=filename_usr;
+	  system(command2.c_str());
+	} else {
+	  printf("Error opening file  brdusr.cgx \n");
+	  DrvHVSipm_except::HVSipmRetStatus(handle,3, "IP = "+fIPAddress+" ");
 	}
-	// and remove the file
-	string command2="rm ";
-	command2+=filename_usr;
-	system(command2.c_str());
 
 	// get json string from call to nim module
 	lenbuf=strlen(buf1);
@@ -494,39 +504,258 @@ DrvHVSipm::OnCycleLocal()
 	  int ik;
 	  char string[60];
 
-
-	  // comment printout
-	  /*
-	  printf(" Loop = %d - Timestamp = %25s  \n",jjj,timestring);
-	  printf(" %.11s; %.7s; %.7s; %.9s; %.15s ;%.3s:%.3s:%.3s:%.3s:%.3s:%.3s;",name,snum,hwver,swver,myipaddr,mac1,mac2,mac3,mac4,mac5,mac6);
-	  printf("\n id  chan status hvset  hvlvl  cardT  sipmI  sipmT errSt  errcnt lasterr\n");
-	  for (ik=0;ik<ichan;ik++) {
-	    printf("%4d %4d %4d   %5.2f  %5.2f  %5.2f  %5.2f  %5.2f %5d %5d  %5d \n",
-		   idval[ik],chanval[ik],cardsts[ik],hvreq[ik],hvlvl[ik],cardtemp[ik],
-		   sipmcurr[ik],sipmtemp[ik],errsts[ik],errcnt[ik],lasterr[ik]);
-	  }
-	  printf(" \n\n");
+	  // here get the name and number of the detector
+	  memset(&sa, 0, sizeof sa);
+	  sa.sin_family = AF_INET;
 	  
-	  */
+	  inet_pton(AF_INET, fIPAddress.c_str() , &sa.sin_addr);
+	  
+	  int res = getnameinfo((struct sockaddr*)&sa, sizeof(sa),
+				node, sizeof(node),
+				NULL, 0, NI_NAMEREQD);
+	  
+	  int length_node=strlen(node);
+	  
+	  char typeofveto[12]=" ";
+	  char numofveto[4]=" ";
+	  char position[4]="";
+	  if (res) {
+	    printf("error: %d\n", res);
+	    printf("%s \n", gai_strerror(res));
+	    
+	    strcpy(typeofveto,"unknown");
+	    strcpy(numofveto,"0");
+	  }
+	  else {
+	    //printf("IP address %s - node=%s - length_node=%d \n", fIPAddress.c_str(),node,length_node);
 
+	    //strncat(numofveto,node[6],2);
+	    numofveto[0]=node[length_node-1];
+	    numofveto[1]=node[length_node];
+	    numofveto[2]='\0';
+	    //printf(" type = %s  - number = %s \n",typeofveto,numofveto);
+
+	    
+	    if(length_node<15) {
+	      //Copies second string
+	      snprintf(typeofveto,length_node-5,"%s",node);              
+	      typeofveto[length_node-5]='\0';
+	    } else {
+	      snprintf(typeofveto,8,"%s","hepveto");
+	      typeofveto[8]='\0';
+	      //if(strcmp(numofveto,"1")) snprintf(numofveto,4,"%s","top");
+	      //if(strcmp(numofveto,"2")) snprintf(numofveto,4,"%s","bot");
+	      //numofveto[4]='\0';
+	    }
+
+	  }
+	   
+	  int maxchan;
+	  maxchan=ichan;
+	  if(strcmp(typeofveto,"hepveto")==0 && strcmp(numofveto,"8")==0) {
+	    maxchan=12;
+	  }
+
+
+	  if(debug) {
+	    // comment printout
+	    
+	    printf(" Loop = %d - Timestamp = %25s  \n",jjj,timestring);
+	    printf(" %.11s; %.7s; %.7s; %.9s; %.15s ;%.3s:%.3s:%.3s:%.3s:%.3s:%.3s;",name,snum,hwver,swver,myipaddr,mac1,mac2,mac3,mac4,mac5,mac6);
+	    printf("\n id  chan status hvset  hvlvl  cardT  sipmI  sipmT errSt  errcnt lasterr\n");
+	    for (ik=0;ik<maxchan;ik++) {
+	      printf("%4d %4d %4d   %5.2f  %5.2f  %5.2f  %5.2f  %5.2f %5d %5d  %5d \n",
+		     idval[ik],chanval[ik],cardsts[ik],hvreq[ik],hvlvl[ik],cardtemp[ik],
+		     sipmcurr[ik],sipmtemp[ik],errsts[ik],errcnt[ik],lasterr[ik]);
+	    }
+	    printf(" \n\n");
+	  }
+	  
+	  
 	 
-
 	  // and output to file
 	  FILE * pFile;
 	  std::string filename="data/HVSiPM_";
 	  filename+=fIPAddress;
-
 	  pFile = fopen (filename.c_str(),"w");
+	  FILE * pFileh;
+	  std::string filenameh="history/HVSiPM_";
+	  filenameh+=fIPAddress;
+	  pFileh = fopen (filenameh.c_str(),"a");
 
-	  fprintf(pFile,"%.24s;%.11s;%.7s;%.7s;%.9s;%.15s;%.3s:%.3s:%.3s:%.3s:%.3s:%.3s;%d \n",timestring,name,snum,hwver,swver,myipaddr,mac1,mac2,mac3,mac4,mac5,mac6,ichan);
-	  for (ik=0;ik<ichan;ik++) {
+	  fprintf(pFile,"%.24s;%.11s;%.7s;%.7s;%.9s;%.15s;%.3s:%.3s:%.3s:%.3s:%.3s:%.3s;%d \n",timestring,name,snum,hwver,swver,myipaddr,mac1,mac2,mac3,mac4,mac5,mac6,maxchan);
+	  fprintf(pFileh,"%.24s;%.15s;%d \n",timestring,myipaddr,maxchan);
+	  for (ik=0;ik<maxchan;ik++) {
+	    // print values for dcs
 	    fprintf(pFile,"%4d;%4d;%4d;%5.2f;%5.2f;%5.2f;%5.2f;%5.2f;%5d;%5d;%5d \n",
+		   idval[ik],chanval[ik],cardsts[ik],hvreq[ik],hvlvl[ik],cardtemp[ik],
+		   sipmcurr[ik],sipmtemp[ik],errsts[ik],errcnt[ik],lasterr[ik]);
+	    // and history file
+	    fprintf(pFileh,"%4d;%4d;%4d;%5.2f;%5.2f;%5.2f;%5.2f;%5.2f;%5d;%5d;%5d \n",
 		   idval[ik],chanval[ik],cardsts[ik],hvreq[ik],hvlvl[ik],cardtemp[ik],
 		   sipmcurr[ik],sipmtemp[ik],errsts[ik],errcnt[ik],lasterr[ik]);
 	  }
 
 	  fclose(pFile);
+	  fclose(pFileh);
 
+	    
+	  // check valid values for HV,temp and no errors
+	  // and send alarm if needed
+	  int ioff_channels=0;
+	  FILE * pFile2;
+	  std::string filename2="alarm/sipm_";
+	  filename2.append(typeofveto);
+	  filename2.append(numofveto);
+	  filename2+="_alarm.txt";
+	  pFile2 = fopen (filename2.c_str(),"w");
+	  fprintf(pFile2," <span foreground=\"red\" font=\"32\">DCS SIPM  %s %s  Alarm \n",typeofveto,numofveto);
+	  
+	  
+	  // prepare for alarms
+	  FILE * pFile4;
+	  std::string filename4="monitor/sipm_alarm";
+	  filename4.append(typeofveto);
+	  filename4.append(numofveto);
+	  filename4+=".txt";
+	  pFile4 = fopen (filename4.c_str(),"w");
+	  fprintf(pFile4,"PLOTID SIPM_ALARM_%s_%s \n",typeofveto,numofveto);
+	  fprintf(pFile4,"PLOTNAME SiPM %s_%s %.24s \nPLOTTYPE activetext\n",typeofveto,numofveto,timestring);
+	  fprintf(pFile4,"DATA [ ");
+
+	  
+	  // 2.7 to avoid alarm of pveto 6 channels off
+	  float vlimit=2.7;
+	  float tlimit=50.;
+	  for (ik=0;ik<maxchan;ik++) {
+	    int ialarm=0;
+	    // mask alarms for hepveto 8, last 4 channels
+	    //if(strcmp(typeofveto,"hepveto")==0 && strcmp(numofveto,"8")==0) {
+	    //if(ik>11) break;
+	    //}
+	    // alarm for voltage
+	    float absdiff=abs(hvreq[ik]-hvlvl[ik]);
+	    if(absdiff>vlimit) {
+	      printf("Alarm SIPM %s - %s - channel %d - HV=%5.2f  \n ",typeofveto,numofveto,ik,hvlvl[ik]);
+	      fprintf(pFile2," <i> check channel %d - HV=%5.2f  \n</i> ",ik,hvlvl[ik]);
+	      ialarm++;
+	    }
+	    if(sipmtemp[ik]>tlimit) {
+	      printf("Alarm SIPM %s - %s - channel %d - Temp=%5.2f  \n ",typeofveto,numofveto,ik,sipmtemp[ik]);
+	      fprintf(pFile2," <i> check channel %d - Temp=%5.2f  \n</i> ",ik,sipmtemp[ik]);
+	      ialarm++;
+	    }
+	    if(errsts[ik]!=0) {
+	      //if((errsts[ik]!=0) && (errcnt[ik]>1) ) {
+	      printf("Alarm SIPM %s - %s - channel %d - HV=%5.2f Current=%5.2f Temp=%5.2f Error=%d \n",typeofveto,numofveto,ik,hvlvl[ik],sipmcurr[ik],sipmtemp[ik],errsts[ik]);
+	      fprintf(pFile2,"<i> check channel %d - HV=%5.2f Current=%5.2f Temp=%5.2f Error=%d \n</i>",ik,hvlvl[ik],sipmcurr[ik],sipmtemp[ik],errsts[ik]);
+	      ialarm++;
+	    }
+
+	    // prepare data for alarm monitor
+	    if(ialarm>0) {
+	      ioff_channels++;
+	      if (ioff_channels>0) {
+		fprintf(pFile4,",");
+	      }
+	      fprintf(pFile4,"{\"title \",\"Chan %s HV \",\"current\":{\"value\":\"%5.2f\",\"col\":\"#FF0000\"}}",ik,hvlvl[ik]);
+	      fprintf(pFile4,"{\"title \",\"current \",\"current\":{\"value\":\"%5.2f\",\"col\":\"#FF0000\"}}",sipmcurr[ik]);
+	      fprintf(pFile4,"{\"title \",\"Temp \",\"current\":{\"value\":\"%.5.2f\",\"col\":\"#FF0000\"}}",sipmtemp[ik]);
+	      fprintf(pFile4,"{\"title \",\"Status \",\"current\":{\"value\":\"%d\",\"col\":\"#FF0000\"}}",errsts[ik]);
+	    }
+
+	  }  // endif for channels
+
+	  // And close alarm files
+	  fprintf(pFile2," </span> ");
+	  fclose(pFile2);
+
+	  fprintf(pFile4," ]\n");
+	  fclose(pFile4);
+
+	  /*
+	  // and copy alarm file to monitor@l0padme3
+	  std::string scp4="scp -q ";
+	  scp4+=filename4;
+	  scp4+=" monitor@l0padme3:PadmeMonitor/watchdir/. ";
+	  // cout << " scp command " << scp2 << endl; 
+	  char * writable4 = new char[scp4.size() + 1];
+	  std::copy(scp4.begin(), scp4.end(), writable4);
+	  writable4[scp4.size()] = '\0'; // don't forget the terminating 0
+	  // scp to monitor@l0padme3
+	  system(writable4);
+	  delete [] writable4;
+	  */
+
+	  // and send alarm if there are channels off
+	  if(ioff_channels>0) {
+	    std::string command2="sendmessage_sipm  ";
+	    command2+=filename2;
+	    char * writable2 = new char[command2.size() + 1];
+	    std::copy(command2.begin(), command2.end(), writable2);
+	    writable2[command2.size()] = '\0'; // don't forget the terminating 0
+	    system(writable2);
+	    // and delete 
+	    delete [] writable2;
+
+	  }
+	    	  
+	  
+	  // and write plots for monitoring
+	  FILE * pFile3;
+	  std::string filename3="monitor/SiPMMon_";
+	  filename3.append(typeofveto);
+	  filename3.append(numofveto);
+	  filename3+=".txt";
+	  pFile3 = fopen (filename3.c_str(),"w");
+
+	  char typeofveto_up[length_node-5];
+	  int nchar=length_node-5;
+	  int ic=0;
+	  for (ic=0;ic<nchar;ic++) {
+	    typeofveto_up[ic]=toupper(typeofveto[ic]);
+	  }
+	    
+	  // write values to file
+	  int numchan= maxchan;
+	  fprintf(pFile3,"PLOTID %s_NIM_MOD_%s_HV \n",typeofveto_up,numofveto);
+	  fprintf(pFile3,"PLOTNAME HV_%s_%s %s \nCHANNELS %d\nRANGE_X 0 %d\nTITLE_Y Voltage (V)\nPLOTTYPE histo1d\n",typeofveto_up,numofveto,timestring,numchan,numchan);
+	  fprintf(pFile3,"DATA  [ [");
+	  for (ik=0;ik<maxchan-1;ik++) {
+	    fprintf(pFile3,"%5.2f,",hvlvl[ik]);
+	  }
+	  fprintf(pFile3,"%5.2f ]]\n",hvlvl[maxchan-1]);
+
+	  fprintf(pFile3,"PLOTID %s_NIM_MOD_%s_CURRENT \n",typeofveto_up,numofveto);
+	  fprintf(pFile3,"PLOTNAME SiPM_Current_%s_%s \nCHANNELS %d\nRANGE_X 0 %d\nTITLE_Y Current (uA) \nPLOTTYPE histo1d\n",typeofveto_up,numofveto,numchan,numchan);
+	  fprintf(pFile3,"DATA  [ [");
+	  for (ik=0;ik<maxchan-1;ik++) {
+	    fprintf(pFile3,"%5.2f,",sipmcurr[ik]);
+	  }
+	  fprintf(pFile3,"%5.2f ]]\n",sipmcurr[maxchan-1]);
+
+	  fprintf(pFile3,"PLOTID %s_NIM_MOD_%s_TEMP \n",typeofveto_up,numofveto);
+	  fprintf(pFile3,"PLOTNAME SiPM_Temp_%s_%s \nCHANNELS %d\nRANGE_X 0 %d\nTITLE_Y Temp (C) \n PLOTTYPE histo1d\n",typeofveto_up,numofveto,numchan,numchan);
+	  fprintf(pFile3,"DATA  [ [");
+	  for (ik=0;ik<maxchan-1;ik++) {
+	    fprintf(pFile3,"%5.2f,",sipmtemp[ik]);
+	  }
+	  fprintf(pFile3,"%5.2f ]]\n",sipmtemp[maxchan-1]);
+
+	  fclose(pFile3);
+	    
+	  // and copy file to monitor@l0padme3
+	  std::string scp2="scp -q ";
+	  scp2+=filename3;
+	  scp2+=" monitor@l0padme3:PadmeMonitor/watchdir/. ";
+	  // cout << " scp command " << scp2 << endl; 
+	  char * writable2 = new char[scp2.size() + 1];
+	  std::copy(scp2.begin(), scp2.end(), writable2);
+	  writable2[scp2.size()] = '\0'; // don't forget the terminating 0
+	  // scp to monitor@l0padme3
+	  system(writable2);
+	  delete [] writable2;
+	 
 	  
 	} else {
 	  //printf( " lenbuf = 0 - exiting \n");
@@ -535,6 +764,7 @@ DrvHVSipm::OnCycleLocal()
 	}
 	
 	//}  // end of for loop
+
  
 }
 

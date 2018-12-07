@@ -85,8 +85,7 @@ class DrvBTFBeam:public VDeviceDriver{
     //std::lock_guard<std::mutex> guard(fBTFBeamHandle_mutex);
     std::string fIPAddress;
     std::string fPort;
-    memcached_st *memc;
-    //std::string fUsername;
+   //std::string fUsername;
     //std::string fPassword;
 
 

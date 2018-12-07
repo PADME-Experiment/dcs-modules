@@ -4,204 +4,279 @@
 #include "extern/CAENHVWrapper/CAENHVWrapper.h"
 
 
-
-VCaenHVMainFrame::VCaenHVMainFrame(const std::string& s, VDeviceBase*d):
-  fCaenCrateHandle      (static_cast<DrvCaenHV*>(d)->GetCaenCrateHandle()),
-  fCaenCrateHandle_mutex(static_cast<DrvCaenHV*>(d)->GetCaenCrateHandle_mutex()),
-  VDeviceBase(s,d)
-{}
-
-
+  int
+DrvCaenSY4527::ComInit()
+{
+  CAENHVRESULT ret;
+  int handle;
+  CAENHV_SYSTEM_TYPE_t sys_type = (CAENHV_SYSTEM_TYPE_t) SY4527; // 0: SY1527, 2: SY4527
+  int link_type = LINKTYPE_TCPIP;
+  ret = CAENHV_InitSystem(sys_type, link_type, (void*)fIPAddress.c_str(), fUsername.c_str(), fPassword.c_str(), &handle);
+  if(ret != CAENHV_OK){
+    DrvCaenHV_except::CAENWrapperRetStatus(handle,ret,
+        "IP = "+fIPAddress+"  user = "+fUsername+"  pass = "+fPassword);
+  }
+  
+  // and close the handle
+  ret = CAENHV_DeinitSystem(handle);
+  if(ret != CAENHV_OK)
+    DrvCaenHV_except::CAENWrapperRetStatus(handle,ret);
+  return handle;
+}
 
   void
-VCaenHVMainFrame::UpdateAllLocalParams()
+DrvCaenSY4527::ComDeinit(int handle)
 {
-  GetSysProp_Sessions      ();
-  GetSysProp_ModelName     ();
-  GetSysProp_SwRelease     ();
-  GetSysProp_GenSignCfg    ();
-  GetSysProp_FrontPanIn    ();
-  GetSysProp_FrontPanOut   ();
-  GetSysProp_ResFlagCfg    ();
-  GetSysProp_HvPwSM        ();
-  GetSysProp_HVFanStat     ();
-  GetSysProp_ClkFreq       ();
-  GetSysProp_HVClkConf     ();
-  GetSysProp_IPAddr        ();
-  GetSysProp_IPNetMsk      ();
-  GetSysProp_IPGw          ();
-  GetSysProp_PWCurrent     ();
-  GetSysProp_OutputLevel   ();
-  GetSysProp_SymbolicName  ();
-  GetSysProp_CmdQueueStatus();
-  GetSysProp_CPULoad       ();
-  GetSysProp_MemoryStatus  ();
+  int ret = CAENHV_DeinitSystem(handle);
+  if(ret != CAENHV_OK)
+    DrvCaenHV_except::CAENWrapperRetStatus(handle,ret);
 }
 
 
+void
+DrvCaenSY4527::AssertInit()
+{
+  INFO("DrvCaenSY4527::AssertInit()");
+  //#warning CAEN ComInit
+  fCaenCrateHandle=ComInit();
+  AssertInitAllOwned();
+  //ProcessUpdateListTemp();
+}
 
+  void
+DrvCaenSY4527::Finalize()
+{
+  INFO("DrvCaenSY4527::Finalize()");
+  this->VDeviceBase::Finalize();
+  //#warning CAEN ComDeinit
+  ComDeinit(fCaenCrateHandle );
+  JoinThread();
+}
+
+
+void
+DrvCaenSY4527::OnCycleLocal()
+{
+  int handle;
+  char timestring[27];
+
+  CAENHVRESULT  ret,ret1,ret2,ret3;
+  int           sysHndl=-1;
+  // char* address = "192.168.62.10";
+  int link_type = 0;  // TCP/IP
+   
+  
+  ret = CAENHV_InitSystem((CAENHV_SYSTEM_TYPE_t)2, link_type,(void*)fIPAddress.c_str(), fUsername.c_str(), fPassword.c_str(), &sysHndl);
+  
+  if( ret == CAENHV_OK ){
+    // printf("\n CAEN system online - handle = %d \n\n",sysHndl);
+  } else {
+    DrvCaenHV_except::CAENWrapperRetStatus(sysHndl,ret,
+					   "IP = "+fIPAddress+"  user = "+fUsername+"  pass = "+fPassword);
+    printf("\n CAEN HV connect error - No connection \n");
+    return;
+  }
+  
+  // end of login //
+
+  // get timestamp 
+  time_t ticks;
+  ticks = time(NULL);
+  snprintf(timestring, 25, "%.25s", ctime(&ticks));
+  printf("\n CAEN 4527_InitSystem: %s (num. %d) at %.24s \n", CAENHV_GetError(sysHndl), ret,timestring);
+
+// Now ask SY4527 properties
+  // char session[500];
+  //CAENHV_GetSysProp(sysHndl,"Sessions"       , session);
+  //printf(" %s \n",session);
+  char modelname[80];
+  CAENHV_GetSysProp(sysHndl,"ModelName"      , modelname);
+  //printf("Model %s \n",modelname);
+  char swrel[80];
+  CAENHV_GetSysProp(sysHndl,"SwRelease"      , swrel);
+  //printf("S/W rel  %s \n",swrel);
+  //uint16_t signcfg;
+  //CAENHV_GetSysProp(sysHndl,"GenSignCfg"     ,&signcfg);
+  //printf(" %u \n",signcfg);
+  //uint16_t frontpanin;
+  //CAENHV_GetSysProp(sysHndl,"FrontPanIn"     ,&frontpanin);
+  //printf("Fron Pan in %u \n",frontpanin);
+  //uint16_t frontpanout;
+  //CAENHV_GetSysProp(sysHndl,"FrontPanOut"    ,&frontpanout);
+  //printf("Fron Pan out %u \n",frontpanout);
+  //uint16_t tmp;
+  //CAENHV_GetSysProp(sysHndl,"ResFlagCfg"     ,&tmp);
+  //printf(" %s \n",tmp);
+  //char hwpmsm[80];
+  //CAENHV_GetSysProp(sysHndl,"HvPwSM"         , hwpmsm);
+  // printf("H/W pw SM  %s \n",hwpmsm);
+  char hvfanstat[80];
+  CAENHV_GetSysProp(sysHndl,"HVFanStat"      , hvfanstat);
+  //printf("HV Fan stat %s \n",hvfanstat);
+  uint16_t hvfanspeed;
+  CAENHV_GetSysProp(sysHndl,"HVFanSpeed"      , &hvfanspeed);
+  //printf("HV Fan speed %u \n",hvfanspeed);
+  char pwfanstat[80];
+  CAENHV_GetSysProp(sysHndl,"PWFanStat"      , pwfanstat);
+  //printf("PW Fan stat %s \n",pwfanstat);
+  //uint16_t pwfanspeed;
+  //CAENHV_GetSysProp(sysHndl,"PWFanSpeed"      , &pwfanspeed);
+  //printf("PW Fan speed %u \n",pwfanspeed);
+  //uint16_t clockfreq;
+  //CAENHV_GetSysProp(sysHndl,"ClkFreq"                ,&clockfreq);
+  //printf(" %u \n",clockfreq);
+  //char tmp[80] ;
+  //CAENHV_GetSysProp(sysHndl,"HVClkConf"      , tmp);
+  //printf(" %s \n",tmp);
+  char ipaddr[80];
+  CAENHV_GetSysProp(sysHndl,"IPAddr"         , ipaddr);
+  //printf("IP address %s \n",ipaddr);
+  //char ipnetmask[80];
+  //CAENHV_GetSysProp(sysHndl,"IPNetMsk"       , ipnetmask);
+  //printf(" %s \n",ipnetmask);
+  //char tmp[80];
+  //CAENHV_GetSysProp(sysHndl,"IPGw"           , tmp);
+  //printf(" %s \n",tmp);
+  char pwvoltage[80];
+  CAENHV_GetSysProp(sysHndl,"PWVoltage"      , pwvoltage);
+  //printf("PW volatge %s \n",pwvoltage);
+   char pwcurrent[80];
+  CAENHV_GetSysProp(sysHndl,"PWCurrent"      , pwcurrent);
+  //printf("PW current %s \n",pwcurrent);
+  //uint16_t outputlevel ;
+  //CAENHV_GetSysProp(sysHndl,"OutputLevel"    ,&outputlevel);
+  // printf(" %u \n",outputlevel);
+  //char name[80];
+  //CAENHV_GetSysProp(sysHndl,"SymbolicName"   , name);
+  //printf("Symboic name %s \n",name);
+  //uint16_t tmp;
+  //CAENHV_GetSysProp(sysHndl,"CmdQueueStatus" ,&tmp);
+  //printf(" %s \n",tmp);
+  char cpuload[80];
+  CAENHV_GetSysProp(sysHndl,"CPULoad"        , cpuload);
+  //printf("CPU load %s \n",cpuload);
+  char memstat[80];
+  CAENHV_GetSysProp(sysHndl,"MemoryStatus"   , memstat);
+  //printf("Memory status %s \n",memstat);
+ 
+  fflush(stdout);
+  
+  // end of channel name and VMon //
+  
+  // LOGOUT //
+  
+  ret = CAENHV_DeinitSystem(sysHndl);
+  if(ret == CAENHV_OK) {
+    printf("CAENHV_DeinitSystem: Connection closed (num. %d)\n", ret);
+  } else {
+    DrvCaenHV_except::CAENWrapperRetStatus(sysHndl,ret,
+					   "IP = "+fIPAddress+"  user = "+fUsername);
+    //printf("CAENHV_DeinitSystem: %s (num. %d)\n\n", CAENHV_GetError(sysHndl), ret);
+  }
+  // end of logout //
+
+  // and send to the data folder for dcs
+  
+  FILE * pFile;
+  // int n;
+  std::string filename="data/CAENSY4527";
+  pFile = fopen (filename.c_str(),"w");
+
+  fprintf(pFile,"%.24s;%s;%s;%s\n",timestring,modelname,swrel,ipaddr);
+  fprintf(pFile,"%u;%s;%s\n",hvfanspeed,hvfanstat,pwfanstat);
+  fprintf(pFile,"%s;%s \n",pwvoltage,pwcurrent);
+  fprintf(pFile,"%s;%s\n",cpuload,memstat);
+
+  fclose(pFile);
+ 
+  // and print to monitor fan speed and temp
+  // and send value to file
+  FILE * pFile3;
+  std::string filename3="CAENSY4527";
+  filename3+=".txt";
+  pFile3 = fopen (filename3.c_str(),"w");
+  // write values to file
+  fprintf(pFile3,"PLOTID CAEN_HV_4527 \nPLOTNAME CAEN HV crate SY4527 status \nPLOTTYPE text \n");
+  fprintf(pFile3,"DATA  [ [\"Timestamp\",\"%.24s\"]",timestring);
+  fprintf(pFile3,",[\"Model \",\"%s\"]",modelname);
+  fprintf(pFile3,",[\"S/W release \",\"\%s\"]",swrel);
+  fprintf(pFile3,",[\"IP address \",\"\%s\"]",ipaddr);
+  fprintf(pFile3,",[\"HV Fan status\",\%u]",hvfanspeed);
+  fprintf(pFile3,",[\"HV Fan speeds\",\"\%s\"]",hvfanstat);
+  fprintf(pFile3,",[\"PW fan speeds \",\"\%s\"]",pwfanstat);
+  fprintf(pFile3,",[\"PW voltages  \",\"\%s\"]",pwvoltage);
+  fprintf(pFile3,",[\"PW currents \",\"\%s\"]",pwcurrent);
+  fprintf(pFile3,",[\"CPU load  \",\"\%s\"]",cpuload);
+  fprintf(pFile3,",[\"Memory status \",\"\%s\"] ]\n",memstat);
+
+  fclose(pFile3);
+
+  // and copy file to monitor@l0padme3
+  std::string scp2="scp -q ";
+  scp2+=filename3;
+  scp2+=" monitor@l0padme3:PadmeMonitor/watchdir/. ";
+  // cout << " scp command " << scp2 << endl; 
+  char * writable2 = new char[scp2.size() + 1];
+  std::copy(scp2.begin(), scp2.end(), writable2);
+  writable2[scp2.size()] = '\0'; // don't forget the terminating 0
+  // scp to monitor@l0padme3
+  system(writable2);
+  
+  // and wait 120 secs for next readout
+  sleep(120);
+
+}
 
 
   void
-VCaenHVMainFrame::GetCrateMap()
+DrvCaenSY4527::GetCrateMap()
 {
+  CAENHVRESULT  ret,ret1,ret2,ret3;
+  int           sysHndl=-1;
+  char* address = "192.168.62.10";
+  int link_type = 0;  // TCP/IP
+
   ushort nrslots, *nrchlist, *sernumlist;
   char *modellist,*descrlist;
-  unsigned char *firmwaremin,*firmawaremax;
+  unsigned char *firmwaremin,*firmwaremax;
 
-  int ret;
-  {
-    std::lock_guard<std::mutex> guard(fCaenCrateHandle_mutex);
-    ret = CAENHV_GetCrateMap(fCaenCrateHandle,
-        &nrslots,            //ushort *NrOfSlot,
-        &nrchlist,           //ushort **NrofChList,
-        &modellist,          //char **ModelList,
-        &descrlist,          //char **DescriptionList,
-        &sernumlist,         //ushort **SerNumList,
-        &firmwaremin,        //uchar **FmwRelMinList,
-        &firmawaremax);      //uchar **FmwRelMaxList);
-  }
-
-  if(ret != CAENHV_OK)
-    DrvCaenHV_except::CAENWrapperRetStatus(fCaenCrateHandle,ret);
-  std::vector<std::string>modelVec;
-  std::vector<std::string>descrVec;
-  utl::ConvCharListVector(nrslots,modellist,modelVec);
-  utl::ConvCharListVector(nrslots,descrlist,descrVec);
-
-  for(int i=0;i<nrslots;++i){
-    std::cout
-      <<"nrchlist    ["<<i<<"]'"<<nrchlist         [i] <<"'"<<std::endl
-      <<"modellist   ["<<i<<"]'"<<modelVec         [i] <<"'"<<std::endl
-      <<"descrlist   ["<<i<<"]'"<<descrVec         [i] <<"'"<<std::endl
-      <<"sernumlist  ["<<i<<"]'"<<sernumlist       [i] <<"'"<<std::endl
-      <<"firmwaremin ["<<i<<"]'"<<int(firmwaremin  [i])<<"'"<<std::endl
-      <<"firmawaremax["<<i<<"]'"<<int(firmawaremax [i])<<"'"<<std::endl
-      <<std::endl;
-  }
-
-  std::cerr<<"bef del "<<__FILE__<<__LINE__<<__func__<<std::endl;
-  CAENHV_Free(nrchlist    );/// must be dealocated by the user
-  CAENHV_Free(modellist   );/// must be dealocated by the user
-  CAENHV_Free(descrlist   );/// must be dealocated by the user
-  CAENHV_Free(sernumlist  );/// must be dealocated by the user
-  CAENHV_Free(firmwaremin );/// must be dealocated by the user
-  CAENHV_Free(firmawaremax);/// must be dealocated by the user
-}
-
-
-
-  void
-VCaenHVMainFrame::GetExecCommList() ///Get list of possible 
-{
-  ushort numcom;
-  char*comnamelist;
-
-  int ret;
-  { std::lock_guard<std::mutex> guard(fCaenCrateHandle_mutex);
-    ret=CAENHV_GetExecCommList(fCaenCrateHandle,&numcom,&comnamelist);
-    if(ret!=CAENHV_OK) DrvCaenHV_except::CAENWrapperRetStatus(fCaenCrateHandle,ret);
-  }
-
-  std::vector<std::string> list;
-  utl::ConvCharListVector(numcom,comnamelist,list);
-  int len=0;
-  for(int i=0;i<numcom;++i){
-    std::cout<<list[i]<<"   ";
-  } std::cout<<std::endl;
-
-  CAENHV_Free(comnamelist);
-
-}
-
-  void
-VCaenHVMainFrame::GetSysProp(const std::string&cmd, void* res)
-{
-  int ret;
   std::lock_guard<std::mutex> guard(fCaenCrateHandle_mutex);
-  ret=CAENHV_GetSysProp(fCaenCrateHandle,cmd.c_str(),res);
-  if(ret!=CAENHV_OK)
+
+  ret1 = CAENHV_GetCrateMap(fCaenCrateHandle,&nrslots,&nrchlist,&modellist,&descrlist,&sernumlist,&firmwaremin,&firmwaremax);     
+  
+  if(ret1!=CAENHV_OK) {
+    printf("CAENHV_GetCrateMap call error %s (num. %d)\n\n", CAENHV_GetError(sysHndl), ret);
     DrvCaenHV_except::CAENWrapperRetStatus(fCaenCrateHandle,ret);
-}
+    
+  } else {
+    printf(" SY4527 crate map  - number of slots = %d \n",nrslots);
+    
+    char	*m = modellist, *d = descrlist;
+    int i;
 
-  void
-VCaenHVMainFrame::GetSysPropList() ///Get list of possible 
-{
-  ushort numcom;
-  char*comnamelist;
-  int ret;
-  {
-    std::lock_guard<std::mutex> guard(fCaenCrateHandle_mutex);
-    ret=CAENHV_GetSysPropList(fCaenCrateHandle,&numcom,&comnamelist);
-    if(ret!=CAENHV_OK)
-      DrvCaenHV_except::CAENWrapperRetStatus(fCaenCrateHandle,ret);
+    for(i=0;i<nrslots;i++, m += strlen(m) + 1, d += strlen(d) + 1 ){
+
+     if( *m == '\0' ) {
+	printf("\n Board %2d: Not Present \n", i);
+      } else {             
+
+       std::cout<<" slot N. "<< i << std::endl;
+       std::cout<<"nrchlist     "<<nrchlist         [i] <<" "<<std::endl
+		<<"modellist    "<<m                    <<" "<<std::endl
+		<<"descrlist    "<<d                    <<" "<<std::endl
+		<<"sernumlist   "<<sernumlist       [i] <<" "<<std::endl
+		<<"firmwaremin  "<<int(firmwaremin  [i])<<" "<<std::endl
+		<<"firmwaremax " <<int(firmwaremax  [i])<<" "<<std::endl
+		<<std::endl;
+     }
+    }
+
+    //std::cerr<<"bef del "<<__FILE__<<__LINE__<<__func__<<std::endl;
+    CAENHV_Free(nrchlist    );/// must be dealocated by the user
+    CAENHV_Free(modellist   );/// must be dealocated by the user
+    CAENHV_Free(descrlist   );/// must be dealocated by the user
+    CAENHV_Free(sernumlist  );/// must be dealocated by the user
+    CAENHV_Free(firmwaremin );/// must be dealocated by the user
+    CAENHV_Free(firmwaremax );/// must be dealocated by the user
   }
-  std::vector<std::string> list;
-  utl::ConvCharListVector(numcom,comnamelist,list);
-
-  int len=0;
-  for(int i=0;i<numcom;++i){
-    std::cout<<list[i]<<"   ";
-  } std::cout<<std::endl;
-  CAENHV_Free(comnamelist);
 }
-
-
-
-
-  void
-VCaenHVMainFrame::GetInfoAllLocal(std::stringstream& ss)
-{
-  ss<<GetName()<<"   Sessions       "<<fSessions      .GetVal()<<"  "<<fSessions      .GetAge()<<"\r\n";
-  ss<<GetName()<<"   ModelName      "<<fModelName     .GetVal()<<"  "<<fModelName     .GetAge()<<"\r\n";
-  ss<<GetName()<<"   SwRelease      "<<fSwRelease     .GetVal()<<"  "<<fSwRelease     .GetAge()<<"\r\n";
-  ss<<GetName()<<"   GenSignCfg     "<<fGenSignCfg    .GetVal()<<"  "<<fGenSignCfg    .GetAge()<<"\r\n";
-  ss<<GetName()<<"   FrontPanIn     "<<fFrontPanIn    .GetVal()<<"  "<<fFrontPanIn    .GetAge()<<"\r\n";
-  ss<<GetName()<<"   FrontPanOut    "<<fFrontPanOut   .GetVal()<<"  "<<fFrontPanOut   .GetAge()<<"\r\n";
-  ss<<GetName()<<"   ResFlagCfg     "<<fResFlagCfg    .GetVal()<<"  "<<fResFlagCfg    .GetAge()<<"\r\n";
-  ss<<GetName()<<"   HvPwSM         "<<fHvPwSM        .GetVal()<<"  "<<fHvPwSM        .GetAge()<<"\r\n";
-  ss<<GetName()<<"   HVFanStat      "<<fHVFanStat     .GetVal()<<"  "<<fHVFanStat     .GetAge()<<"\r\n";
-  ss<<GetName()<<"   ClkFreq        "<<fClkFreq       .GetVal()<<"  "<<fClkFreq       .GetAge()<<"\r\n";
-  ss<<GetName()<<"   HVClkConf      "<<fHVClkConf     .GetVal()<<"  "<<fHVClkConf     .GetAge()<<"\r\n";
-  ss<<GetName()<<"   IPAddr         "<<fIPAddr        .GetVal()<<"  "<<fIPAddr        .GetAge()<<"\r\n";
-  ss<<GetName()<<"   IPNetMsk       "<<fIPNetMsk      .GetVal()<<"  "<<fIPNetMsk      .GetAge()<<"\r\n";
-  ss<<GetName()<<"   IPGw           "<<fIPGw          .GetVal()<<"  "<<fIPGw          .GetAge()<<"\r\n";
-  ss<<GetName()<<"   PWCurrent      "<<fPWCurrent     .GetVal()<<"  "<<fPWCurrent     .GetAge()<<"\r\n";
-  ss<<GetName()<<"   OutputLevel    "<<fOutputLevel   .GetVal()<<"  "<<fOutputLevel   .GetAge()<<"\r\n";
-  ss<<GetName()<<"   SymbolicName   "<<fSymbolicName  .GetVal()<<"  "<<fSymbolicName  .GetAge()<<"\r\n";
-  ss<<GetName()<<"   CmdQueueStatus "<<fCmdQueueStatus.GetVal()<<"  "<<fCmdQueueStatus.GetAge()<<"\r\n";
-  ss<<GetName()<<"   CPULoad        "<<fCPULoad       .GetVal()<<"  "<<fCPULoad       .GetAge()<<"\r\n";
-  ss<<GetName()<<"   MemoryStatus   "<<fMemoryStatus  .GetVal()<<"  "<<fMemoryStatus  .GetAge()<<"\r\n";
-}
-
-
-
-
-
-
-
-
-
-
-
-
-void DrvCaenSY4527::GetSysProp_Sessions      (){char tmp[500];GetSysProp("Sessions"       , tmp);fSessions      .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_ModelName     (){char tmp[80] ;GetSysProp("ModelName"      , tmp);fModelName     .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_SwRelease     (){char tmp[80] ;GetSysProp("SwRelease"      , tmp);fSwRelease     .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_GenSignCfg    (){uint16_t tmp ;GetSysProp("GenSignCfg"     ,&tmp);fGenSignCfg    .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_FrontPanIn    (){uint16_t tmp ;GetSysProp("FrontPanIn"     ,&tmp);fFrontPanIn    .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_FrontPanOut   (){uint16_t tmp ;GetSysProp("FrontPanOut"    ,&tmp);fFrontPanOut   .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_ResFlagCfg    (){uint16_t tmp ;GetSysProp("ResFlagCfg"     ,&tmp);fResFlagCfg    .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_HvPwSM        (){char tmp[80] ;GetSysProp("HvPwSM"         , tmp);fHvPwSM        .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_HVFanStat     (){char tmp[80] ;GetSysProp("HVFanStat"      , tmp);fHVFanStat     .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_ClkFreq       (){uint16_t tmp ;GetSysProp("ClkFreq"        ,&tmp);fClkFreq       .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_HVClkConf     (){char tmp[80] ;GetSysProp("HVClkConf"      , tmp);fHVClkConf     .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_IPAddr        (){char tmp[80] ;GetSysProp("IPAddr"         , tmp);fIPAddr        .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_IPNetMsk      (){char tmp[80] ;GetSysProp("IPNetMsk"       , tmp);fIPNetMsk      .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_IPGw          (){char tmp[80] ;GetSysProp("IPGw"           , tmp);fIPGw          .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_PWCurrent     (){char tmp[80] ;GetSysProp("PWCurrent"      , tmp);fPWCurrent     .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_OutputLevel   (){uint16_t tmp ;GetSysProp("OutputLevel"    ,&tmp);fOutputLevel   .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_SymbolicName  (){char tmp[80] ;GetSysProp("SymbolicName"   , tmp);fSymbolicName  .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_CmdQueueStatus(){uint16_t tmp ;GetSysProp("CmdQueueStatus" ,&tmp);fCmdQueueStatus.SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_CPULoad       (){char tmp[80] ;GetSysProp("CPULoad"        , tmp);fCPULoad       .SetVal(tmp);}
-void DrvCaenSY4527::GetSysProp_MemoryStatus  (){char tmp[80] ;GetSysProp("MemoryStatus"   , tmp);fMemoryStatus  .SetVal(tmp);}

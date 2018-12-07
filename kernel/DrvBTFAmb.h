@@ -1,5 +1,5 @@
-#ifndef  _DCS_kernel_drv_DrvPAdmeAmb_h_
-#define  _DCS_kernel_drv_DrvPadmeAmb_h_ 1
+#ifndef  _DCS_kernel_drv_DrvBTFAmb_h_
+#define  _DCS_kernel_drv_DrvBTFAmb_h_ 1
 //#include "DrvPadmeAmb.h"   //in c file
 
 #include"VDeviceDriver.h"

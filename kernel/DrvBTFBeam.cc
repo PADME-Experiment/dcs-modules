@@ -51,46 +51,9 @@ DrvBTFBeam::ComInit()
 {
   /* -------------- INITIALIZING VARIABLES -------------- */
  int handle; // socket file descriptors
- int portNum = 11211; // port number (same that server)
- //const int bufsize = 4096; // buffer size
- //char buffer[bufsize]; // buffer to transmit
- //char ip[] = "141.108.7.201"; // Server IP */
- memcached_server_st *servers = NULL;
 
- cout << "\n- Starting client..." << endl;
-// memcached_servers_parse (char *server_strings);
-// memcached_st *memc;
-memcached_return rc;
-//char *serv;
-
-
-  char *retrieved_value;
-  size_t value_length;
-  uint32_t flags;
-
-  char * serv = new char[fIPAddress.size() + 1];
-  std::copy(fIPAddress.begin(), fIPAddress.end(), serv);
-  serv[fIPAddress.size()] = '\0'; // don't forget the terminating 0
-
-  int port;
-  if(fPort.size()!=0) {
-    port = std::atoi (fPort.c_str());
-  } else {
-    port = portNum;
-  }
-
-    memc = memcached_create(NULL);
-    servers = memcached_server_list_append(servers,serv, port, &rc);
-    rc = memcached_server_push(memc, servers);
-
-    if (rc == MEMCACHED_SUCCESS)
-      printf("Added server %s successfully\n",serv);
-    else {
-      fprintf(stderr, "Couldn't add server: %s\n", memcached_strerror(memc, rc));
-      DrvBTFBeam_except::BTFBeamRetStatus(handle,6, "IP = "+fIPAddress+" ");
-    }
-
-    return handle;    
+ handle=0;  
+ return handle;    
 }
 
   void
@@ -152,10 +115,10 @@ DrvBTFBeam::OnCycleLocal()
 {
   int handle;
   // int portNum = 11211; // port number (same that server)
-  char *key1 = "DAQ_BTF";
   //char *key1 = "DAQ_BTF";
   char *key3 = "VUG_PADME";
   char *key2 = "BTFDATA_PADME";
+  char *key1 = "BTFDATA_LOG";
   char *retrieved_value1;
   char *retrieved_value2;
   char *retrieved_value3;
@@ -163,76 +126,48 @@ DrvBTFBeam::OnCycleLocal()
   size_t value_length2;
   size_t value_length3;
   uint32_t flags;
-   memcached_return rc;
+  memcached_return rc;
   //char *serv;
+  bool debug=false;
+  memcached_server_st *servers = NULL;
+  int iloop=0;
+  memcached_st *memc;
+ 
+ int portNum = 11211; // port number (same that server)
 
-   // get timestamp 
-   time_t ticks;
-   ticks = time(NULL);
-   char timestring[27];
-   snprintf(timestring, 25, "%.25s", ctime(&ticks));
-   // printf(" Timestamp = %25s  \n",timestring);
 
+  char *retrieved_value;
+  size_t value_length;
+ 
+  char * serv = new char[fIPAddress.size() + 1];
+  std::copy(fIPAddress.begin(), fIPAddress.end(), serv);
+  serv[fIPAddress.size()] = '\0'; // don't forget the terminating 0
 
-   /*  
-   // key 1
-  // here get value from memcache server
-  retrieved_value1 = memcached_get(memc, key1, strlen(key1), &value_length1, &flags, &rc);
-    //printf("Yay!\n");
+  int port;
+  if(fPort.size()!=0) {
+    port = std::atoi (fPort.c_str());
+  } else {
+    port = portNum;
+  }
+
+  memc = memcached_create(NULL);
+  servers = memcached_server_list_append(servers,serv, port, &rc);
+  rc = memcached_server_push(memc, servers);
+
+ 
+  if(iloop==0) {
+    cout << "\n BTFBEAM - Starting memcached client with server "<< fIPAddress<< " - port "<< port << endl;
+  }
+  iloop++;
 
   if (rc == MEMCACHED_SUCCESS) {
-    // fprintf(stderr, "Key retrieved successfully - ik=%d \n",ik);
-    //printf("The key '%s' on server '%s' returned value '%s'.\n", key,serv,retrieved_value);
-      int length=value_length1;
-      
-      // printf ("Splitting string DAQ into tokens:\n");
-      // get only last 4 values of all string
-      char *DAQ_string;
- 
-      DAQ_string=strdup(retrieved_value1);
-      free(retrieved_value1);
-      
-       
-      //cout <<  " memcache key " << key << " server says ";
-      //cout << DAQ_string << " - length =  " << length << endl;
-            
-      char * pch1[4000];
-      char *found;
-      int itoken1=0;
-      while ((found = strsep(&DAQ_string," ")) != NULL ) {
- 	pch1[itoken1]=found;
-	itoken1++;
-      }
-      //cout << "memcache key pieces = " << itoken1 << endl;
-
-      
-      //for(int ik=0;ik<itoken1;ik++) {
-      //printf(" pch1[%d] = %s \n",ik,pch1[ik]);
-      //}
-     
-      
-      char send_string[20];
-      sprintf(send_string, "%.24s;%s;%s;%s;%s;%s ",timestring,pch1[itoken1-5],pch1[itoken1-4],pch1[itoken1-3],pch1[itoken1-2],pch1[itoken1-1]);
-      int lenght1=strlen(send_string);
-      
-      cout << " memcache key1 " << key1 << " sent_value = "<< send_string << " - length =  " << lenght1 << endl;
-
-      // and send value to file
-      FILE * pFile;
-      // int n;
-      std::string filename1="data/BTF_DAQ";
-      pFile = fopen (filename1.c_str(),"w");
-      // write values to file
-      fprintf(pFile," %s ",send_string);
-      fclose(pFile);
-   
+    if(debug) {
+      printf("Added server %s successfully\n",serv);
+    }
   } else {
-    fprintf(stderr, "Couldn't retrieve key %s: %s\n", key1,memcached_strerror(memc, rc));
-    DrvBTFBeam_except::BTFBeamRetStatus(handle,3, "IP = "+fIPAddress+" ");
-     
-  }  
-
-*/
+    fprintf(stderr, "Couldn't add server: %s\n", memcached_strerror(memc, rc));
+    DrvBTFBeam_except::BTFBeamRetStatus(handle,6, "IP = "+fIPAddress+" ");
+  }
 
   // key 2
   // here get value from memcache server
@@ -240,34 +175,42 @@ DrvBTFBeam::OnCycleLocal()
     //printf("Yay!\n");
 
   if (rc == MEMCACHED_SUCCESS) {
-    // fprintf(stderr, "Key retrieved successfully  \n");
-    // printf("The key '%s' returned value '%s'.\n", key2,retrieved_value2);
+    if(debug) {
+      printf("Key retrieved successfully  \n");
+      printf("The key '%s' returned value '%s'.\n", key2,retrieved_value2);
+    }
     int length=value_length2;
       
     // printf ("Splitting string DAQ into tokens:\n");
-    // get only last 4 values of all string
     char *BTF_string;
  
     BTF_string=strdup(retrieved_value2);
     free(retrieved_value2);
     
-    //cout <<  " memcache key " << key2 << " server says ";
-    //cout << BTF_string << " - length =  " << length << endl;
-    
-    char * pch2[20];
+    if(debug) {
+      cout <<  " memcache key " << key2 << " server says ";
+      cout << BTF_string << " - length =  " << length << endl;
+    }
+
+    char * pch2[30];
     char *found;
     int itoken2=0;
     while ((found = strsep(&BTF_string,",")) != NULL ) {
  	pch2[itoken2]=found;
 	itoken2++;
     }
-    //cout << "memcache key2 pieces = " << itoken2 << endl;
-    
-    /*
-    for(int ik=0;ik<itoken2;ik++) {
-      printf(" pch2[%d] = %s \n",ik,pch2[ik]);
+   
+    if(debug) {
+      cout << "memcache key2 pieces = " << itoken2 << endl;
+      for(int ik=0;ik<itoken2;ik++) {
+	printf(" pch2[%d] = %s \n",ik,pch2[ik]);
+      }
     }
-    */
+    
+    int last=14;
+
+    // reset number of keys to only data fields
+    if(itoken2>last) itoken2=last;
 
     // convert labview timestamp to normal timestamp
     double timechar=atof(pch2[1]);
@@ -280,73 +223,117 @@ DrvBTFBeam::OnCycleLocal()
   
     // convert first data to normal time stamp
     time_t timedata = atoi(array); // convert to time_t, ignores msec
-    char *dateconv;
-    dateconv=asctime(localtime(&timedata));
+
+    // char *dateconv;
+    // human readable time format
+    //dateconv=asctime(localtime(&timedata));
+
+    struct tm * timeinfo;
+    char dateconv[25];
+    // new format for timestamp
+    timeinfo = localtime (&timedata);
+    strftime(dateconv,25,"%Y-%m-%d %T",timeinfo);
+
 
     char send_string[70];
-
+ 
+    // 9/11/2018 BTFDATA string enlarged from 10 to 13 values 
+    // last 3 values : 
+    // phase linac 0=e-/1=e+
+    // linac up = 1
+    // BTF phase =1
+ 
     // convert pch2[10] to string and strip last funny chars
-    string pch2_10;
-    //sprintf(pch2_10,"%s",pch2[10] );
-    pch2_10=pch2[10];
-    if (pch2_10.size () > 0)  pch2_10.resize (pch2_10.size () - 4);
-
+    string pch2_last;
+    // sprintf(pch2_10,"%s",pch2[10] );
+    pch2_last=pch2[last];
+    if(debug) {
+      printf("pch2[%d] length before = %d \n",last,pch2_last.size());
+    }
+    // old resize
+    //if (pch2_10.size () > 4)  pch2_10.resize (pch2_10.size () - 4);
+    if (pch2_last.size () > 14)  pch2_last.resize (pch2_last.size () - 14);
+    if(debug) {
+      printf("pch2[%d] length after = %d \n",last,pch2_last.size());
+    }
       
-    // reinterpret timestamp from unix timestamp
-    //time_t timeval=ctime(pch2[1]);
-    //printf("Converted Time %s",timeval);
-    sprintf(send_string, "%.24s;%s;%s;%s;%s;%s;%s;%s;%s;%s \n",dateconv,pch2[2],pch2[3],pch2[4],pch2[5],pch2[6],pch2[7],pch2[8],pch2[9],pch2_10.c_str());
+    sprintf(send_string, "%.24s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s \n",dateconv,pch2[2],pch2[3],pch2[4],pch2[5],pch2[6],pch2[7],pch2[8],pch2[9],pch2[10],pch2[11],pch2[12],pch2[13],pch2_last.c_str());
     int lenght2=strlen(send_string);
       
     cout << " memcache key2 " << key2 << " sent_value = "<< send_string << " - length =  " << lenght2 << endl;
 
-      // and send value to file
-      FILE * pFile;
-      std::string filename1="data/BTFDATA_Padme";
-      pFile = fopen (filename1.c_str(),"w");
-      // write values to file
-      fprintf(pFile," %s ",send_string);
-      fclose(pFile);
+    // and send value to file
+    FILE * pFile;
+    std::string filename1="data/BTFDATA_Padme";
+    FILE * pFile_app;
+    std::string filename_app="history/BTFDATA_Padme";
+    pFile = fopen (filename1.c_str(),"w");
+    pFile_app = fopen (filename_app.c_str(),"a");
+    // write values to file
+    fprintf(pFile," %s ",send_string);
+    fclose(pFile);
+    fprintf(pFile_app," %s ",send_string);
+    fclose(pFile_app);
+    
+    // and send value to file
+    FILE * pFile2;
+    std::string filename2="monitor/BTFDATA.txt";
+    pFile2 = fopen (filename2.c_str(),"w");
 
-     // and send value to file
-      FILE * pFile2;
-      std::string filename2="BTFDATA.txt";
-      pFile2 = fopen (filename2.c_str(),"w");
+    
+    char *parttype1="e-";
+    if(strcmp(pch2[4],"0")!=0) parttype1="e+";
+    //parttype1[3]='\0';
+    char *parttype2="e+";
+    if(strcmp(pch2[11],"1")!=0) parttype2="e-";
+    //parttype2[3]='\0';
+    char *producer="OK";
+    if(strcmp(pch2[2],"0")!=0) producer="not OK";
+    char *btfdata="OK";
+    if(strcmp(pch2_last.c_str(),"1")!=0) btfdata="not OK";
+    if(debug) {
+      printf(" parttype1 = %s - parttype2= %s \n",parttype1,parttype2);
+      printf(" producer status = %s - btfdata status = %s \n",producer,btfdata);
+    }
 
-      char *parttype;
-      if(pch2[4]=="0") parttype="e-";
-      if(pch2[4]=="1") parttype="e+";
-      
+    // write values to file
+    fprintf(pFile2,"PLOTID DCS_BTF_Beam \nPLOTNAME BTF Data for Padme \nPLOTTYPE activetext \n");
+    fprintf(pFile2,"DATA [ {\"title\":\"Timestamp\",\"current\":{\"value\":\"%.24s\"}}",dateconv);
+    //fprintf(pFile2,",{\"title\":\"Producer status\",\"alarm\":{\"min\":\"-1\",\"max\":\"1\"},\"current\":{\"value\":\"%s\",\"col\":\"#00CC00\"}}",pch2[2]);
+    fprintf(pFile2,",{\"title\":\"Producer status\",\"current\":{\"value\":\"%s\"}}",producer);
+    fprintf(pFile2,",{\"title\":\"DHPTB101 status\",\"warn\":{\"min\":\"1\",\"max\":\"2\"},\"current\":{\"value\":\"%s\",\"col\":\"#00CC00\"}}",pch2[3]);
+    fprintf(pFile2,",{\"title\":\"BTF part type\",\"current\":{\"value\":\"%s\"} }",parttype1);
+    fprintf(pFile2,",{\"title\":\"Padme Magnet current\",\"warn\":{\"min\":\"220\",\"max\":\"260\"},\"alarm\":{\"min\":\"100\",\"max\":\"280\"},\"current\":{\"value\":\"%s\",\"col\":\"#00CC00\"} }",pch2[10]);
+    // new keys from Luca 9/11/2018
+    fprintf(pFile2,",{\"title\":\"Linac Phase\",\"current\":{\"value\":\"%s\"} }",parttype2);
+    fprintf(pFile2,",{\"title\":\"Modulator status\",\"warn\":{\"min\":\"1\",\"max\":\"2\"},\"current\":{\"value\":\"%s\",\"col\":\"#00CC00\"} }",pch2[12]);
+    fprintf(pFile2,",{\"title\":\"Gun status \",\"current\":{\"value\":\"%s\",\"col\":\"#00CC00\"},\"warn\":{\"min\":\"1\",\"max\":\"2\"} }",pch2[13]);
+    //    fprintf(pFile2,",{\"title\":\"BTF data OK \",\"warn\":{\"min\":\"1\",\"max\":\"2\"},\"current\":{\"value\":\"%s\",\"col\":\"#00CC00\"} }]\n",pch2_last.c_str());
+    fprintf(pFile2,",{\"title\":\"BTF data OK \",\"current\":{\"value\":\"%s\"} }]\n",btfdata);
 
-      // write values to file
-      fprintf(pFile2,"PLOTID DCS_BTF_Beam \nPLOTNAME BTF Data for Padme \nPLOTTYPE text \n");
-      fprintf(pFile2,"DATA [ [\"Timestamp\",\"%.24s\"]",dateconv);
-      fprintf(pFile2,",[\"Producer status\",%s]",pch2[2]);
-      fprintf(pFile2,",[\"DHPTB101 status\",%s]",pch2[3]);
-      fprintf(pFile2,",[\"BTF part type\",%s]",pch2[4]);
-      fprintf(pFile2,",[\"Padme Magnet current\",%s] ]\n",pch2_10.c_str());
-      fprintf(pFile2,"PLOTID DHSTB001_BTF_Beam \nPLOTNAME DHSTB001 Data for Padme \nPLOTTYPE text \n");
-      fprintf(pFile2,"DATA [ [\"Timestamp\",\"%.24s\"]",dateconv);
-      fprintf(pFile2,",[\"DHSTB001 status\",%s]",pch2[5]);
-      fprintf(pFile2,",[\"DHSTB001 Energy\",%s] ]\n",pch2[8]);
-      fprintf(pFile2,"PLOTID DHSTB002_BTF_Beam \nPLOTNAME DHSTB002 Data for Padme \nPLOTTYPE text \n");
-      fprintf(pFile2,"DATA [ [\"Timestamp\",\"%.24s\"]",dateconv);
-      fprintf(pFile2,",[\"DHSTB002 status\",%s]",pch2[6]);
-      fprintf(pFile2,",[\"DHSTB002 Energy\",%s] ]\n",pch2[9]);
-      fclose(pFile2);
+    fprintf(pFile2,"PLOTID DHSTB001_BTF_Beam \nPLOTNAME DHSTB001 Data for Padme \nPLOTTYPE activetext \n");
+    fprintf(pFile2,"DATA [ {\"title\":\"Timestamp\",\"current\":{\"value\":\"%.24s\"}}",dateconv);
+    fprintf(pFile2,",{ \"title\":\"DHSTB001 status\",\"warn\":{\"min\":\"1\",\"max\":\"2\"} ,\"current\":{\"value\":\"%s\",\"col\":\"#00CC00\"} }",pch2[5]);
+    fprintf(pFile2,",{ \"title\":\"DHSTB001 Energy\",\"warn\":{\"min\":\"500.0\",\"max\":\"600.0\"},\"current\":{\"value\":\"%s\",\"col\":\"#00CC00\"} }]\n",pch2[8]);
 
-      // and copy file to monitor@l0padme3
-      string scp="scp -q BTFDATA.txt monitor@l0padme3:PadmeMonitor/watchdir/. ";
-      // cout << " scp command " << scp << endl; 
-      char * writable1 = new char[scp.size() + 1];
-      std::copy(scp.begin(), scp.end(), writable1);
-      writable1[scp.size()] = '\0'; // don't forget the terminating 0
-      // scp to monitor@l0padme3
-      system(writable1);
-
+    fprintf(pFile2,"PLOTID DHSTB002_BTF_Beam \nPLOTNAME DHSTB002 Data for Padme \nPLOTTYPE activetext \n");
+    fprintf(pFile2,"DATA [ {\"title\":\"Timestamp\",\"current\":{\"value\":\"%.24s\"}}",dateconv);
+    fprintf(pFile2,",{ \"title\":\"DHSTB002 status\",\"warn\":{\"min\":\"1\",\"max\":\"2\"},\"current\":{\"value\":\"%s\",\"col\":\"#00CC00\"} }",pch2[6]);
+    fprintf(pFile2,",{ \"title\":\"DHSTB002 Energy\",\"warn\":{\"min\":\"500.0\",\"max\":\"600.0\"},\"current\":{\"value\":\"%s\",\"col\":\"#00CC00\"} }]\n",pch2[9]);
+    fclose(pFile2);
+    
+    // and copy file to monitor@l0padme3
+    string scp="scp -q "+filename2+" monitor@l0padme3:PadmeMonitor/watchdir/. ";
+    // cout << " scp command " << scp << endl; 
+    char * writable1 = new char[scp.size() + 1];
+    std::copy(scp.begin(), scp.end(), writable1);
+    writable1[scp.size()] = '\0'; // don't forget the terminating 0
+    // scp to monitor@l0padme3
+    system(writable1);
+    
 
   } else {
-    fprintf(stderr, "Couldn't retrieve key %s: %s\n", key3,memcached_strerror(memc, rc));
+    fprintf(stderr, "Couldn't retrieve key %s: %s\n", key2,memcached_strerror(memc, rc));
     DrvBTFBeam_except::BTFBeamRetStatus(handle,3, "IP = "+fIPAddress+" ");
      
   }  
@@ -397,9 +384,17 @@ DrvBTFBeam::OnCycleLocal()
   
     // convert first data to normal time stamp
     time_t timedata3 = atoi(array3); // convert to time_t, ignores msec
-    char *dateconv3;
-    dateconv3=asctime(localtime(&timedata3));
 
+    // old human readable format
+    //char *dateconv3;
+    //dateconv3=asctime(localtime(&timedata3));
+
+    struct tm * timeinfo3;
+    char dateconv3[25];
+    // new format for timestamp
+    timeinfo3 = localtime (&timedata3);
+    strftime(dateconv3,25,"%Y-%m-%d %T",timeinfo3);
+  
     // convert pch3[4] to string and strip last funny chars
     string pch3_4;
     pch3_4=pch3[4];
@@ -422,35 +417,34 @@ DrvBTFBeam::OnCycleLocal()
 
     // and send value to file
     FILE * pFile;
-    // int n;
     std::string filename1="data/VUG_Padme";
+    FILE * pFile_app;
+    std::string filename_app="history/VUG_Padme";
     pFile = fopen (filename1.c_str(),"w");
+    pFile_app = fopen (filename_app.c_str(),"a");
     // write values to file
     fprintf(pFile," %s ",send_string);
     fclose(pFile);
+    fprintf(pFile_app," %s ",send_string);
+    fclose(pFile_app);
+
     
     // and send value to file
     FILE * pFile3;
-    std::string filename3="VUGDATA.txt";
+    std::string filename3="monitor/VUGDATA.txt";
     pFile3 = fopen (filename3.c_str(),"w");
     
-    /*  example of data for monitor    
-PLOTID TARGET_QXCh0
-PLOTNAME BTF Data for Padme
-PLOTTYPE text
-DATA [ ["Timestamp","Mon Oct  1 15:07:05 2018"],["Producer status",0,0], ["DHPTB101 status",0,0],["BTF part type",0,1],["DHSTB001 status",0,0],["DHSTB002 status",0],["DHSTB001 Energy",4.50,2.00],["DHSTB002 Energy",0.00,2.00],["Padme Magnet current",50.00,60.0] ]
-     */
 
       // write values to file
-      fprintf(pFile3,"PLOTID DCS_VUG_Padme \nPLOTNAME VUG Data for Padme \nPLOTTYPE text \n");
-      fprintf(pFile3,"DATA  [ [\"Timestamp\",\"%.24s\"]",dateconv3);
-      fprintf(pFile3,",[\"VUG Producer status\",%s]",pch3[2]);
-      fprintf(pFile3,",[\"VUG sensor status\",%s]",pch3[3]);
-      fprintf(pFile3,",[\"Vacuum - mbar\",%.4e] ]\n",vacuum_pressure);
+      fprintf(pFile3,"PLOTID DCS_VUG_Padme \nPLOTNAME VUG Data for Padme \nPLOTTYPE activetext \n");
+      fprintf(pFile3,"DATA  [ {\"title\":\"Timestamp\",\"current\":{\"value\":\"%.24s\"}}",dateconv3);
+      fprintf(pFile3,",{\"title\":\"VUG producer status\",\"alarm\":{\"min\":\"-1\",\"max\":\"1\"},\"current\":{\"value\":\"%s\",\"col\":\"#00CC00\"}}",pch3[2]);
+      fprintf(pFile3,",{\"title\":\"VUG sensor status\",\"alarm\":{\"min\":\"-1\",\"max\":\"1\"},\"current\":{\"value\":\"%s\",\"col\":\"#00CC00\"}}",pch3[3]);
+      fprintf(pFile3,",{\"title\":\"Vacuum - mbar\",\"warn\":{\"max\":\"1.e-5\"},\"alarm\":{\"max\":\"1.e-4\"},\"current\":{\"value\":\"%.4e\",\"col\":\"#00CC00\"}} ]\n",vacuum_pressure);
       fclose(pFile3);
 
       // and copy file to monitor@l0padme3
-      string scp2="scp -q VUGDATA.txt monitor@l0padme3:PadmeMonitor/watchdir/. ";
+      string scp2="scp -q "+filename3+" monitor@l0padme3:PadmeMonitor/watchdir/. ";
       // cout << " scp command " << scp2 << endl; 
       char * writable2 = new char[scp2.size() + 1];
       std::copy(scp2.begin(), scp2.end(), writable2);
@@ -467,8 +461,154 @@ DATA [ ["Timestamp","Mon Oct  1 15:07:05 2018"],["Producer status",0,0], ["DHPTB
   }  
 
 
-  // wait 5 secs for next read
-  usleep(5000000);
+
+  // get key1
+  retrieved_value1 = memcached_get(memc, key1, strlen(key1), &value_length1, &flags, &rc);
+
+  if (rc == MEMCACHED_SUCCESS) {
+    if(debug) {
+      printf("The key %s on server %s was OK \n",key1,serv);
+      printf("Key  value= %s \n",retrieved_value1);
+      // cout << " key value = << retrieved_value << endl;
+      printf(" the key length is %d \n",value_length1);
+      // free(retrieved_value);
+    }
+
+    int length=value_length1;
+      
+    // printf ("Splitting string DAQ into tokens:\n");
+    // get only last 4 values of all string
+    char *BTF_string;
+ 
+    BTF_string=strdup(retrieved_value1);
+    free(retrieved_value1);
+  
+    
+    char * pch3[100];
+    char * pch4[100][2];
+    char *found;
+    int itoken3=0;
+    while ((found = strsep(&BTF_string,"\t\r\n")) != NULL ) {
+ 	pch3[itoken3]=found;
+	itoken3++;
+    }
+    if(debug) printf("memcache key pieces = %d \n ",itoken3);
+    
+    int ij,ii;
+    int maxnum=37;
+    ii=0;
+    for(ij=0;ij<maxnum;ij++) {
+      pch4[ii][1]=pch3[ij];
+      pch4[ii][2]=" ";
+      if(ij>5 && ij<23 ) {
+	pch4[ii][2]=pch3[ij+1];
+	ij++;
+      } else {
+      }
+      ii++;
+    }
+
+    if(debug) {
+      printf(" new number of keys =%d \n",ii);
+      for(ij=0;ij<ii;ij++) {
+	// double values read
+	printf(" %d -  %s = %s %s \n",ij,pch3[ij+maxnum+1],pch4[ij][1],pch4[ij][2]);
+      }
+    }
+    
+    // if timestamp convert to our timestamp
+    // convert labview timestamp to normal timestamp
+    double timechar=atof(pch4[1][1]);
+    // and subtract seconds from 0:0 1/1/1970 to 0:00 1/1/1904
+    double  time2 = timechar -  2082844800.;
+    // printf(" new time is %f \n",time2);
+    char array[100];
+    sprintf(array, "%f", time2);
+    // printf(" array is %s \n",array);
+    
+    // convert first data to normal time stamp
+    time_t timedata = atoi(array); // convert to time_t, ignores msec
+    
+    struct tm * timeinfo;
+    char dateconv1[25];
+    // new format for timestamp
+    timeinfo = localtime (&timedata);
+    strftime(dateconv1,25,"%Y-%m-%d %T",timeinfo);
+    // and print converted data
+    printf(" converted timestamp = %.24s \n",dateconv1);
+ 
+    char send_string[300];
+    sprintf(send_string, "%.24s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s \n",
+	    dateconv1,pch3[0],pch3[6],pch3[7],pch3[8],pch3[9],pch3[10],pch3[11],pch3[12],pch3[13],pch3[15],pch3[16],
+pch3[17],pch3[18],pch3[19],pch3[20],pch3[21],pch3[22],pch3[28],pch3[29],pch3[30],pch3[31],pch3[35],pch3[36]);
+
+    int lenght1=strlen(send_string);    
+    cout << " memcache key1 " << key1 << " sent_value = "<< send_string << " - length =  " << lenght1 << endl;
+
+
+
+    // and send value to file
+    FILE * pFile;
+    std::string filename1="data/BTF_LOG";
+    FILE * pFile_app;
+    std::string filename_app="history/BTF_LOG";
+    pFile = fopen (filename1.c_str(),"w");
+    pFile_app = fopen (filename_app.c_str(),"a");
+    // write values to file
+    fprintf(pFile," %s ",send_string);
+    fclose(pFile);
+    fprintf(pFile_app," %s ",send_string);
+    fclose(pFile_app);
+
+    // and send value to file
+    FILE * pFile3;
+    std::string filename3="monitor/BTFLOG.txt";
+    pFile3 = fopen (filename3.c_str(),"w");
+
+   // write values to file
+  fprintf(pFile3,"PLOTID BTF_LOG \nPLOTNAME BTF Collimator data \nPLOTTYPE text \n");
+  fprintf(pFile3,"DATA  [ [\"Timestamp\",\"%.24s\"]",dateconv1);
+  fprintf(pFile3,",[\"TB4 Right set/RO \",\"%s  %s\"]",pch3[6],pch3[15]);
+  fprintf(pFile3,",[\"TB4 Left set/RO \",\"%s  %s\"]",pch3[7],pch3[16]);
+  fprintf(pFile3,",[\"TB2 Right set/RO \",\"%s  %s\"]",pch3[8],pch3[17]);
+  fprintf(pFile3,",[\"TB2 Left set/RO \",\"%s  %s\"]",pch3[9],pch3[18]);
+  fprintf(pFile3,",[\"TB3 Up set/RO \",\"%s  %s\"]",pch3[10],pch3[19]);
+  fprintf(pFile3,",[\"TB3 Down set/RO \",\"%s  %s\"]",pch3[11],pch3[20]);
+  fprintf(pFile3,",[\"TB1 Up set/RO \",\"%s  %s\"]",pch3[12],pch3[21]);
+  fprintf(pFile3,",[\"TB1 Down set/RO \",\"%s  %s\"] ]\n",pch3[13],pch3[22]);
+  fprintf(pFile3,"PLOTID BTF_LOG1 \nPLOTNAME BTF trigger data \nPLOTTYPE text \n");
+  fprintf(pFile3,"DATA [ [\"Padme trigger delay \",\"%s\"]",pch3[28]);
+  fprintf(pFile3,",[\"Padme gate time \",\"%s\"]",pch3[29]);
+  fprintf(pFile3,",[\"Pulser trigger delay \",\"%s\"]",pch3[30]);
+  fprintf(pFile3,",[\"Pulser gate time \",\"%s\"]",pch3[31]);
+  fprintf(pFile3,",[\"BTF1 Pressure \",\"%s\"]",pch3[35]);
+  fprintf(pFile3,",[\"BTF1 Press sens status \",\"%s\"] ]\n",pch3[36]);
+  fclose(pFile3);
+
+  // and copy file to monitor@l0padme3
+  string scp2="scp -q "+filename3+" monitor@l0padme3:PadmeMonitor/watchdir/. ";
+  // cout << " scp command " << scp2 << endl; 
+  char * writable2 = new char[scp2.size() + 1];
+  std::copy(scp2.begin(), scp2.end(), writable2);
+  writable2[scp2.size()] = '\0'; // don't forget the terminating 0
+  // scp to monitor@l0padme3
+  system(writable2);
+  
+
+  } else {
+    fprintf(stderr, "Couldn't retrieve key %s: %s\n", key1,memcached_strerror(memc, rc));
+    DrvBTFBeam_except::BTFBeamRetStatus(handle,3, "IP = "+fIPAddress+" ");
+  }
+  
+ 
+
+  // and free memc
+  memcached_servers_reset(memc);
+  memcached_free(memc);
+
+
+  // wait 20 secs for next read
+  usleep(20000000);
 
 }
 

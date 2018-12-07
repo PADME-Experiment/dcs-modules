@@ -116,7 +116,7 @@ class DrvCaenHV:public VDeviceDriver{
     DrvCaenHV(const std::string&lab,VDeviceBase*parp):VDeviceDriver(lab,parp){}
     ~DrvCaenHV(){}
     void OnStartLocal(){}
-    void OnCycleLocal(){}
+    //void OnCycleLocal(){}
     void OnStopLocal (){}
     void SetLocalParams(std::set<std::string>){}
     void UpdateAllLocalParams(){}
@@ -124,14 +124,17 @@ class DrvCaenHV:public VDeviceDriver{
     void Finalize();
     void AssertInit();
     void SetParams(std::set<std::string>);
+    
 
     void SetIPAddress(const std::string&s){fIPAddress=s;}
     void SetUsername (const std::string&s){fUsername =s;}
     void SetPassword (const std::string&s){fPassword =s;}
+    void SetAlarm(const std::string&s){fAlarm =s;}
 
   private:
     void ComDeinit(int);
     int  ComInit();
+    void OnCycleLocal();
 
   public:
     const int & GetCaenCrateHandle()const{return fCaenCrateHandle;}
@@ -144,6 +147,7 @@ class DrvCaenHV:public VDeviceDriver{
     std::string fIPAddress;
     std::string fUsername;
     std::string fPassword;
+    std::string fAlarm;
 };
 
 

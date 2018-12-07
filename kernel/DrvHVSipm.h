@@ -65,6 +65,7 @@ class DrvHVSipm:public VDeviceDriver{
 
     void SetIPAddress(const std::string&s){fIPAddress=s;}
     void SetPort(const std::string&s){fPort=s;}
+    void SetAlarm(const std::string&s){fAlarm=s;}
     //void SetUsername (const std::string&s){fUsername =s;}
     //void SetPassword (const std::string&s){fPassword =s;}
 
@@ -84,6 +85,7 @@ class DrvHVSipm:public VDeviceDriver{
     //std::lock_guard<std::mutex> guard(fHVSipmHandle_mutex);
     std::string fIPAddress;
     std::string fPort;
+    std::string fAlarm;
     //std::string fUsername;
     //std::string fPassword;
 
