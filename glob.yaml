@@ -1,9 +1,15 @@
-#- Args: {IPAddr: 192.168.62.101,Port: 11211}
-#  Label: "PADMEAMB"
+- Args: {IPAddr: 192.168.62.10, User: admin, Pass: admin, Alarm: 1}
+  Label: "CAENHV1"
+  ParentLabel: "PADME"
+  DriverType: "CAEN_HVCrate"
+  Update: {"*": 30}
+
+#- Args: {IPAddr: 192.168.62.120}
+#  Label: "MimosaTK"
 #  ParentLabel: "PADME"
-#  DriverType: "PADME_amb"
-#  Update: {"*": 15}
-#
+#  DriverType: "MimosaT"
+#  Update: {"*": 30}
+
 - Args: {IPAddr: 192.168.62.3}
   Label: "Caen8100-R"
   ParentLabel: "PADME"
@@ -21,6 +27,12 @@
   ParentLabel: "PADME"
   DriverType: "Caen8301"
   Update: {"*": 30}
+
+- Args: {IPAddr: 192.168.62.22}
+  Label: "Caen8301-new"
+  ParentLabel: "PADME"
+  DriverType: "Caen8301"
+  Update: {"*": 30}
   
 - Args: {IPAddr: 192.168.189.180}
   Label: "BTFAMB"
@@ -28,13 +40,12 @@
   DriverType: "BTF_amb"
   Update: {"*": 10}
 
-#  old way of asking BTFAMB via memcached
-# - Args: {IPAddr: testchaos.lnf.infn.it, Port: 11211}
-#  Label: "BTFAMB"
-#  ParentLabel: "PADME"
-#  DriverType: "BTF_amb"
-#  Update: {"*": 10}
 
+#- Args: {IPAddr: 192.168.62.102}
+#  Label: "Rasp2"
+#  ParentLabel: "PADME"
+#  DriverType: "Rasp2"
+#  Update: {"*": 10}
 
 - Args: {IPAddr: 192.168.198.164, Port: 11211}
   Label: "BTFBEAM"
@@ -79,12 +90,19 @@
   Update: {"*": 10}
 
 #pveto 6
-- Args: {IPAddr: 192.168.62.59}
+#- Args: {IPAddr: 192.168.62.59}
+#  Label: "HVSipm16"
+#  ParentLabel: "PADME"
+#  DriverType: "HV_Sipm"
+#  Update: {"*": 10}
+
+#pveto 6 substitution 5/11/18
+- Args: {IPAddr: 192.168.62.61}
   Label: "HVSipm16"
   ParentLabel: "PADME"
   DriverType: "HV_Sipm"
   Update: {"*": 10}
-
+ 
 #eveto 1
 - Args: {IPAddr: 192.168.62.52}
   Label: "HVSipm07"
@@ -127,6 +145,19 @@
   DriverType: "HV_Sipm"
   Update: {"*": 10}
 
+#hepveto top
+- Args: {IPAddr: 192.168.62.55}
+  Label: "HVSipm11"
+  ParentLabel: "PADME"
+  DriverType: "HV_Sipm"
+  Update: {"*": 10}
+
+#hepveto bottom
+- Args: {IPAddr: 192.168.62.51}
+  Label: "HVSipm02"
+  ParentLabel: "PADME"
+  DriverType: "HV_Sipm"
+  Update: {"*": 10}
 
 #- Args: {IPAddr: 192.168.62.120}
 #  Label: "EcalT"
